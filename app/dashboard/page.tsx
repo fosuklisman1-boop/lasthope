@@ -103,14 +103,6 @@ export default function DashboardPage() {
         return { dateStr, timeStr }
     }
 
-    const calculateDaysRemaining = () => {
-        if (!dbUser?.agent_expires_at || dbUser?.role !== 'agent') return null
-        const now = new Date()
-        const expires = new Date(dbUser.agent_expires_at)
-        const days = Math.ceil((expires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        return days > 0 ? days : 0
-    }
-
     const getTimeSinceJoined = () => {
         if (!dbUser?.created_at) return 'Recently'
         const now = new Date()
@@ -188,7 +180,6 @@ export default function DashboardPage() {
     }
 
     const { dateStr, timeStr } = formatDateTime()
-    const daysRemaining = calculateDaysRemaining()
 
     return (
         <div className="space-y-6">
@@ -227,45 +218,20 @@ export default function DashboardPage() {
                             </p>
                         </div>
 
-                        {/* Row 2: Status & Countdown */}
+                        {/* Row 2: Status */}
                         <div className="bg-black rounded-xl p-3 sm:p-4 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                                 <div className="flex flex-col">
                                     <p className="text-xs sm:text-sm text-white/70 font-semibold">Membership</p>
-                                    <div className={cn(
-                                        "inline-block px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold w-fit",
-                                        daysRemaining !== null && daysRemaining <= 3
-                                            ? "bg-red-500 text-white"
-                                            : daysRemaining !== null && daysRemaining <= 7
-                                                ? "bg-yellow-500 text-black"
-                                                : "bg-green-500 text-white"
-                                    )}>
+                                    <div className="inline-block px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold w-fit bg-green-500 text-white">
                                         Active
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1">
-                                {daysRemaining !== null && (
-                                    <p className={cn(
-                                        "text-sm sm:text-lg font-black",
-                                        daysRemaining <= 3
-                                            ? "text-red-500"
-                                            : daysRemaining <= 7
-                                                ? "text-yellow-500"
-                                                : "text-green-500"
-                                    )}>
-                                        {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
-                                    </p>
-                                )}
-                                {daysRemaining !== null && daysRemaining <= 3 && (
-                                    <Link href="/dashboard/upgrade">
-                                        <Button size="sm" className="h-7 px-3 text-[10px] sm:text-xs bg-red-600 hover:bg-red-700 text-white border-0">
-                                            Renew Now
-                                        </Button>
-                                    </Link>
-                                )}
-                            </div>
+                            <p className="text-sm sm:text-lg font-black text-green-500">
+                                Permanent
+                            </p>
                         </div>
 
                         {/* Row 3: Member Since */}

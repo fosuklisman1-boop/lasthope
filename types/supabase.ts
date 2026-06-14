@@ -98,7 +98,6 @@ export interface User {
     phone_number: string
     role: 'admin' | 'sub-admin' | 'agent' | 'user'
     status: 'active' | 'suspended' | 'inactive'
-    agent_expires_at?: string
     created_at: string
     updated_at: string
 }

@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // Use explicit columns instead of SELECT * for better performance
                 const query = supabase
                     .from('users')
-                    .select('id, email, first_name, last_name, phone_number, role, status, agent_expires_at, created_at, updated_at')
+                    .select('id, email, first_name, last_name, phone_number, role, status, created_at, updated_at')
                     .eq('id', userId)
                     .single()
 
@@ -90,37 +90,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         }
     }, [])
-
-    // Auto-downgrade expired agents
-    useEffect(() => {
-        const checkAndDowngradeExpiredAgent = async () => {
-            if (dbUser?.role === 'agent' && dbUser?.agent_expires_at) {
-                const expiryDate = new Date(dbUser.agent_expires_at)
-                const now = new Date()
-
-                if (expiryDate < now) {
-                    console.log('[AuthContext] Agent expired, auto-downgrading to customer')
-                    try {
-                        const response = await fetch('/api/agent/downgrade', {
-                            method: 'POST'
-                        })
-
-                        if (response.ok) {
-                            console.log('[AuthContext] Auto-downgrade successful')
-                            // Refresh user data to get updated role
-                            await refreshUser()
-                        } else {
-                            console.error('[AuthContext] Auto-downgrade failed:', await response.text())
-                        }
-                    } catch (error) {
-                        console.error('[AuthContext] Auto-downgrade error:', error)
-                    }
-                }
-            }
-        }
-
-        checkAndDowngradeExpiredAgent()
-    }, [dbUser?.role, dbUser?.agent_expires_at])
 
     const refreshUser = useCallback(async () => {
         if (user) {

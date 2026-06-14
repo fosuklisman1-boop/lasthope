@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { processCompletedWalletPayment } from '@/lib/payments'
 import { createServerClient } from '@/lib/supabase'
-import { sendAgentUpgradeSuccessSMS, sendAgentExtensionSuccessSMS } from '@/lib/sms-service'
+import { sendAgentUpgradeSuccessSMS } from '@/lib/sms-service'
 
 export async function POST(request: NextRequest) {
     try {

@@ -52,17 +52,6 @@ export default function ProfilePage() {
         phone_number: '',
     })
 
-    // Calculate days remaining for agents
-    const calculateDaysRemaining = () => {
-        if (!dbUser?.agent_expires_at || dbUser?.role !== 'agent') return null
-        const now = new Date()
-        const expiresAt = new Date(dbUser.agent_expires_at)
-        const daysRemaining = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        return daysRemaining > 0 ? daysRemaining : 0
-    }
-
-    const daysRemaining = calculateDaysRemaining()
-
     // Password change
     const [isChangingPassword, setIsChangingPassword] = useState(false)
     const [passwordData, setPasswordData] = useState({
@@ -238,16 +227,6 @@ export default function ProfilePage() {
                                         </div>
                                     )}
                                 </span>
-                                {dbUser?.role === 'agent' && daysRemaining !== null && (
-                                    <Badge className={cn(
-                                        "font-bold text-xs",
-                                        daysRemaining <= 3
-                                            ? "bg-red-100 text-red-700 hover:bg-red-200"
-                                            : "bg-green-100 text-green-700 hover:bg-green-200"
-                                    )}>
-                                        {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
-                                    </Badge>
-                                )}
                             </CardTitle>
                             <CardDescription className={cn(
                                 dbUser?.role === 'agent' && "text-black/70 font-semibold"

@@ -455,7 +455,6 @@ export type Database = {
       }
       users: {
         Row: {
-          agent_expires_at: string | null
           created_at: string | null
           email: string | null
           first_name: string | null
@@ -467,7 +466,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          agent_expires_at?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
@@ -479,7 +477,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          agent_expires_at?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null

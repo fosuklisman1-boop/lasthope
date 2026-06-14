@@ -25,7 +25,6 @@ export async function GET(request: NextRequest) {
                 phone_number,
                 role,
                 status,
-                agent_expires_at,
                 created_at,
                 updated_at
             `)
