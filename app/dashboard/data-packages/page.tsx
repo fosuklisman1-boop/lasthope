@@ -1,0 +1,1178 @@
+'use client'
+
+import { useEffect, useState, useRef } from 'react'
+import * as XLSX from 'xlsx'
+import { useAuth } from '@/contexts/auth-context'
+import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
+import { formatCurrency, getNetworkGradient, cn } from '@/lib/utils'
+import { validateGhanaianPhone, detectNetwork } from '@/lib/phone-validation'
+import { NetworkIcon } from '@/components/network-icon'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+    Search,
+    LayoutGrid,
+    List,
+    Wifi,
+    Loader2,
+    CheckCircle2,
+    Check,
+    AlertCircle,
+    ShoppingCart,
+    Plus,
+    DollarSign,
+    X,
+    FileSpreadsheet,
+    FileText,
+    CloudUpload
+} from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { DataPackage } from '@/types/supabase'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Trash2, Upload } from 'lucide-react'
+import { useTutorial } from '@/hooks/useTutorial'
+import { HelpButton } from '@/components/tutorial/HelpButton'
+
+interface ValidationResult {
+    lineNumber: number
+    phoneNumber: string
+    volume: number
+    packagePrice: number
+    isValid: boolean
+    errorMessage?: string
+    packageId?: string
+    packageName?: string
+}
+
+
+const NETWORKS = ['MTN', 'Telecel', 'AT-iShare', 'AT-BigTime'] as const
+
+export default function DataPackagesPage() {
+    const { dbUser, session } = useAuth()
+    const router = useRouter()
+
+    // Tutorial hook
+    const userRole = dbUser?.role === 'agent' ? 'agent' : 'customer'
+    const { startTutorial } = useTutorial(userRole as 'customer' | 'agent', '/data-packages')
+
+    const [packages, setPackages] = useState<DataPackage[]>([])
+    const [filteredPackages, setFilteredPackages] = useState<DataPackage[]>([])
+    const [selectedNetwork, setSelectedNetwork] = useState<string>('MTN')
+    const [searchQuery, setSearchQuery] = useState('')
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+    const [isLoading, setIsLoading] = useState(true)
+    const [walletBalance, setWalletBalance] = useState(0)
+
+    const [ordersToday, setOrdersToday] = useState(0)
+
+    // Purchase dialog state
+    const [selectedPackage, setSelectedPackage] = useState<DataPackage | null>(null)
+    const [phoneNumber, setPhoneNumber] = useState('')
+    const [phoneError, setPhoneError] = useState('')
+    const [isPurchasing, setIsPurchasing] = useState(false)
+    const [purchaseSuccess, setPurchaseSuccess] = useState(false)
+    const [idempotencyKey, setIdempotencyKey] = useState('')
+
+    // Bulk Order State
+    const [bulkInputType, setBulkInputType] = useState<'text' | 'excel' | null>(null)
+    const [bulkText, setBulkText] = useState('')
+    const [bulkNetwork, setBulkNetwork] = useState<string>('')
+    const [validationResults, setValidationResults] = useState<ValidationResult[]>([])
+    const [isValidating, setIsValidating] = useState(false)
+    const [isSubmittingBulk, setIsSubmittingBulk] = useState(false)
+    const [bulkFile, setBulkFile] = useState<File | null>(null)
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+    const totalBulkData = validationResults.reduce((sum, r) => sum + (r.isValid ? r.volume : 0), 0)
+    const totalBulkCost = validationResults.reduce((sum, r) => sum + (r.isValid ? r.packagePrice : 0), 0)
+
+
+    useEffect(() => {
+        fetchPackages()
+        fetchWalletBalance()
+        fetchOrdersToday()
+    }, [dbUser])
+
+    useEffect(() => {
+        filterPackages()
+    }, [packages, selectedNetwork, searchQuery])
+
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto'
+            textareaRef.current.style.height = `${Math.max(100, textareaRef.current.scrollHeight)}px`
+        }
+    }, [bulkText])
+
+    const fetchPackages = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('data_packages')
+                .select('*')
+                .eq('is_available', true)
+                .order('sort_order', { ascending: true })
+
+            if (error) throw error
+            setPackages(data || [])
+        } catch (error) {
+            console.error('Error fetching packages:', error)
+            toast.error('Failed to load packages')
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const fetchWalletBalance = async () => {
+        if (!dbUser) return
+
+        const { data } = await supabase
+            .from('wallets')
+            .select('balance')
+            .eq('user_id', dbUser.id)
+            .single()
+
+        setWalletBalance((data as any)?.balance || 0)
+    }
+
+    const fetchOrdersToday = async () => {
+        if (!dbUser) return
+
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        const { count, error } = await supabase
+            .from('orders')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', dbUser.id)
+            .gte('created_at', today.toISOString())
+            .neq('status', 'failed')
+
+        if (!error) {
+            setOrdersToday(count || 0)
+        }
+    }
+
+    const filterPackages = () => {
+        let filtered = packages
+
+        // Filter by network
+        filtered = filtered.filter(p => p.network === selectedNetwork)
+
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase()
+            filtered = filtered.filter(p =>
+                p.size.toLowerCase().includes(query) ||
+                p.network.toLowerCase().includes(query) ||
+                p.description?.toLowerCase().includes(query)
+            )
+        }
+
+        setFilteredPackages(filtered)
+    }
+
+    // Helper function to get effective price based on user role
+    const getEffectivePrice = (pkg: DataPackage) => {
+        // If user is agent AND agent_price is set (> 0), use agent_price
+        if (dbUser?.role === 'agent' && (pkg as any).agent_price > 0) {
+            return (pkg as any).agent_price
+        }
+        return pkg.price
+    }
+
+    const handlePurchaseClick = (pkg: DataPackage) => {
+        setSelectedPackage(pkg)
+        setPhoneNumber('')
+        setPhoneError('')
+        setPurchaseSuccess(false)
+        // Generate new idempotency key for this transaction attempt
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            setIdempotencyKey(crypto.randomUUID())
+        } else {
+            // Fallback for older browsers
+            setIdempotencyKey(Math.random().toString(36).substring(2) + Date.now().toString(36))
+        }
+    }
+
+    const handlePhoneChange = (value: string) => {
+        setPhoneNumber(value)
+        setPhoneError('')
+
+        if (value.length >= 10) {
+            const validation = validateGhanaianPhone(value)
+            if (!validation.isValid) {
+                setPhoneError(validation.error || 'Invalid phone number')
+            } else if (selectedPackage) {
+                // Check if network matches
+                const detectedNet = detectNetwork(value)
+                const packageNetwork = selectedPackage.network.includes('AT') ? 'AirtelTigo' : selectedPackage.network
+                if (detectedNet !== packageNetwork && selectedPackage.network !== 'AT-BigTime') {
+                    setPhoneError(`This number is for ${detectedNet}, not ${selectedPackage.network}`)
+                }
+            }
+        }
+    }
+
+    const handlePurchase = async () => {
+        if (!selectedPackage || !dbUser) return
+
+        const validation = validateGhanaianPhone(phoneNumber)
+        if (!validation.isValid) {
+            setPhoneError(validation.error || 'Invalid phone number')
+            return
+        }
+
+        const effectivePrice = getEffectivePrice(selectedPackage)
+
+        if (walletBalance < effectivePrice) {
+            setPhoneError('Insufficient wallet balance')
+            return
+        }
+
+        setIsPurchasing(true)
+
+        try {
+            const response = await fetch('/api/orders/purchase', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({
+                    packageId: selectedPackage.id,
+                    phoneNumber: validation.normalizedNumber,
+                    idempotencyKey,
+                }),
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Purchase failed')
+            }
+
+            setPurchaseSuccess(true)
+            setWalletBalance(prev => prev - effectivePrice)
+            setOrdersToday(prev => prev + 1)
+            toast.success('Order placed successfully!')
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to place order')
+        } finally {
+            setIsPurchasing(false)
+        }
+    }
+
+    // Bulk Order Functions
+    const parseTextInput = (text: string) => {
+        const lines = text.trim().split('\n')
+        return lines
+            .map((line, index) => {
+                const trimmed = line.trim()
+                if (!trimmed) return null
+
+                // Split by spaces or tabs
+                const parts = trimmed.split(/\s+/)
+                if (parts.length < 2) return null
+
+                // Assuming format: phone volume (e.g., "0551234567 1")
+                // Handle 1GB, 1gb, 1 etc.
+                const phone = parts[0]
+                const volStr = parts[1].toLowerCase().replace('gb', '')
+                const volume = parseFloat(volStr)
+
+                return {
+                    lineNumber: index + 1,
+                    phoneNumber: phone,
+                    volume: volume,
+                    rawLine: trimmed
+                }
+            })
+            .filter(Boolean)
+    }
+
+    const validateLines = (parsedLines: any[]) => {
+        if (!bulkNetwork) {
+            toast.error('Please select a network first')
+            return []
+        }
+
+        return parsedLines.map((line: any) => {
+            // Validate phone
+            const phoneValidation = validateGhanaianPhone(line.phoneNumber)
+            if (!phoneValidation.isValid) {
+                return {
+                    ...line,
+                    packagePrice: 0,
+                    isValid: false,
+                    errorMessage: 'Invalid phone number'
+                }
+            }
+
+            // Check network match
+            const detectedNet = detectNetwork(line.phoneNumber)
+            const targetNet = bulkNetwork === 'AT-BigTime' || bulkNetwork === 'AT-iShare' ? 'AirtelTigo' : bulkNetwork
+            if (detectedNet !== targetNet) {
+                return {
+                    ...line,
+                    packagePrice: 0,
+                    isValid: false,
+                    errorMessage: `Wrong network (${detectedNet})`
+                }
+            }
+
+            const pkg = packages.find(p => {
+                if (p.network !== bulkNetwork) return false
+                const pkgSize = p.size.toLowerCase()
+
+                if (pkgSize.includes('gb')) {
+                    const sizeVal = parseFloat(pkgSize.replace('gb', '').trim())
+                    return sizeVal === line.volume
+                } else if (pkgSize.includes('mb')) {
+                    const sizeVal = parseFloat(pkgSize.replace('mb', '').trim())
+                    return sizeVal / 1000 === line.volume
+                }
+                return false
+            })
+
+            if (!pkg) {
+                return {
+                    ...line,
+                    packagePrice: 0,
+                    isValid: false,
+                    errorMessage: `No ${line.volume}GB package found`
+                }
+            }
+
+            return {
+                ...line,
+                packagePrice: getEffectivePrice(pkg),
+                packageId: pkg.id,
+                packageName: pkg.network + ' ' + pkg.size,
+                isValid: true
+            }
+        })
+    }
+
+    const handleValidateBulk = async () => {
+        if (!bulkNetwork) {
+            toast.error('Please select a network first')
+            return
+        }
+        if (!bulkText.trim()) {
+            toast.error('Please enter phone numbers')
+            return
+        }
+
+        setIsValidating(true)
+        const parsedLines = parseTextInput(bulkText)
+        const results = validateLines(parsedLines)
+
+        setValidationResults(results)
+        setIsValidating(false)
+        if (results.length > 0) {
+            toast.success(`Validated ${results.length} entries`)
+        } else {
+            toast.error('No valid lines found')
+        }
+    }
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            setBulkFile(file)
+            toast.success(`File ${file.name} selected`)
+        }
+    }
+
+    const handleValidateExcel = async () => {
+        if (!bulkNetwork) {
+            toast.error('Please select a network first')
+            return
+        }
+        if (!bulkFile) {
+            toast.error('Please select an Excel file')
+            return
+        }
+
+        setIsValidating(true)
+        const reader = new FileReader()
+        reader.onload = (e) => {
+            const data = e.target?.result
+            if (!data) {
+                setIsValidating(false)
+                return
+            }
+
+            try {
+                const workbook = XLSX.read(data, { type: 'binary' })
+                const sheetName = workbook.SheetNames[0]
+                const worksheet = workbook.Sheets[sheetName]
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][]
+
+                // Assuming columns: Phone, Volume
+                const parsedLines = jsonData.map((row, index) => {
+                    if (index === 0 && (row[0]?.toString().toLowerCase().includes('phone') || row[0]?.toString().length > 10)) {
+                        // Skip header if it looks like one
+                        if (row[0]?.toString().toLowerCase().includes('phone')) return null
+                    }
+
+                    const phone = row[0]?.toString().trim()
+                    const volumeStr = row[1]?.toString().toLowerCase().replace('gb', '').trim()
+                    const volume = parseFloat(volumeStr)
+
+                    if (!phone || isNaN(volume)) return null
+
+                    return {
+                        lineNumber: index + 1,
+                        phoneNumber: phone,
+                        volume: volume,
+                        rawLine: row.join(' ')
+                    }
+                }).filter(Boolean)
+
+                const results = validateLines(parsedLines)
+                setValidationResults(results)
+                toast.success(`Validated ${results.length} entries from Excel`)
+            } catch (error) {
+                toast.error('Error parsing Excel file')
+            } finally {
+                setIsValidating(false)
+            }
+        }
+        reader.readAsBinaryString(bulkFile)
+    }
+
+    const clearInvalid = () => {
+        setValidationResults(prev => prev.filter(r => r.isValid))
+    }
+
+    const clearAllResults = () => {
+        setValidationResults([])
+        setBulkText('')
+        setBulkFile(null)
+    }
+
+    const deleteResult = (index: number) => {
+        setValidationResults(prev => prev.filter((_, i) => i !== index))
+    }
+
+    const handleSubmitBulkOrder = async () => {
+        const validOrders = validationResults.filter(r => r.isValid)
+        if (validOrders.length === 0) return
+
+        const totalCost = validOrders.reduce((sum, order) => sum + order.packagePrice, 0)
+        if (walletBalance < totalCost) {
+            toast.error(`Insufficient balance. Need GHS ${formatCurrency(totalCost)}`)
+            return
+        }
+
+        setIsSubmittingBulk(true)
+        let successCount = 0
+        let failCount = 0
+
+        try {
+            // Process sequentially to be safe with wallet balance and order creation
+            for (const order of validOrders) {
+                try {
+                    const response = await fetch('/api/orders/purchase', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session?.access_token}`
+                        },
+                        body: JSON.stringify({
+                            packageId: order.packageId,
+                            phoneNumber: validateGhanaianPhone(order.phoneNumber).normalizedNumber,
+                        }),
+                    })
+
+                    if (response.ok) {
+                        successCount++
+                    } else {
+                        failCount++
+                    }
+                } catch (e) {
+                    failCount++
+                }
+            }
+
+            // Update stats
+            fetchWalletBalance()
+            fetchOrdersToday()
+
+            if (successCount > 0) {
+                toast.success(`Submitted ${successCount} orders successfully`)
+                setValidationResults([])
+                setBulkText('')
+            }
+            if (failCount > 0) {
+                toast.error(`${failCount} orders failed to process`)
+            }
+
+        } catch (error) {
+            toast.error('Error submitting bulk orders')
+        } finally {
+            setIsSubmittingBulk(false)
+        }
+    }
+    if (isLoading) {
+        return (
+            <div className="space-y-6">
+                <Skeleton className="h-12 w-full max-w-md" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {[...Array(8)].map((_, i) => (
+                        <Skeleton key={i} className="h-48" />
+                    ))}
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex-1 text-center">
+                    <h1 className="text-2xl font-bold">Data Packages</h1>
+                </div>
+                <HelpButton onClick={startTutorial} />
+            </div>
+
+            <div className="flex flex-col items-center gap-4 text-center">
+
+                {/* Stats Dashboard */}
+                <div id="stats-dashboard" className="grid grid-cols-2 gap-4 w-full max-w-md mx-auto mb-2">
+                    <div className="bg-[#1A1A1A] dark:bg-[#E5E7EB] rounded-2xl p-4 text-center shadow-md lg:shadow-lg transition-colors flex flex-col items-center justify-between gap-3">
+                        <div>
+                            <p className="text-[#FACC15] font-medium text-xs mb-1">
+                                Wallet Balance
+                            </p>
+                            <p className="text-[#FACC15] text-xl font-black tracking-tight leading-none">
+                                {formatCurrency(walletBalance)}
+                            </p>
+                        </div>
+                        <Button
+                            size="sm"
+                            className="h-7 text-[10px] uppercase font-bold tracking-wider bg-[#FACC15] text-black hover:bg-[#FACC15]/90 border-0 w-full"
+                            onClick={() => router.push('/dashboard/wallet')}
+                        >
+                            <Plus className="w-3 h-3 mr-1" />
+                            Top Up
+                        </Button>
+                    </div>
+
+                    <div className="bg-[#1A1A1A] dark:bg-[#E5E7EB] rounded-2xl p-4 text-center shadow-md lg:shadow-lg transition-colors flex flex-col items-center justify-center">
+                        <p className="text-[#FACC15] font-medium text-xs mb-1">
+                            Orders Today
+                        </p>
+                        <p className="text-[#FACC15] text-xl font-black tracking-tight leading-none">
+                            {ordersToday}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Bulk Order Section - Agents Only */}
+                {dbUser?.role === 'agent' && (
+                    <div id="bulk-order-section" className="w-full max-w-3xl mx-auto space-y-4">
+                        {/* New Yellow Header Box */}
+                        <div className="bg-[#FFCE00] rounded-3xl p-6 shadow-md lg:shadow-xl relative overflow-hidden">
+                            <div className="flex items-start gap-4 relative z-10">
+                                <div className="bg-[#1A1A1A] p-3 rounded-2xl shadow-lg">
+                                    <CloudUpload className="w-6 h-6 text-[#FFCE00]" />
+                                </div>
+                                <div className="text-left">
+                                    <h2 className="text-xl font-black text-black leading-tight">Bulk Orders Import</h2>
+                                    <p className="text-sm font-bold text-black opacity-70">Import multiple orders at once via Excel or Text</p>
+                                </div>
+                            </div>
+
+                            {/* Toggles */}
+                            <div className="flex gap-3 mt-6 relative z-10">
+                                <Button
+                                    onClick={() => setBulkInputType(bulkInputType === 'text' ? null : 'text')}
+                                    className={cn(
+                                        "flex-1 h-12 rounded-xl font-bold transition-all duration-300",
+                                        bulkInputType === 'text'
+                                            ? "bg-[#1A1A1A] text-[#FFCE00] shadow-lg scale-105"
+                                            : "bg-white text-black hover:bg-white/90"
+                                    )}
+                                >
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Text Input
+                                </Button>
+                                <Button
+                                    onClick={() => setBulkInputType(bulkInputType === 'excel' ? null : 'excel')}
+                                    className={cn(
+                                        "flex-1 h-12 rounded-xl font-bold transition-all duration-300",
+                                        bulkInputType === 'excel'
+                                            ? "bg-[#1A1A1A] text-[#FFCE00] shadow-lg scale-105"
+                                            : "bg-white text-black hover:bg-white/90"
+                                    )}
+                                >
+                                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                                    Excel Import
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Conditional Forms */}
+                        {bulkInputType && (
+                            <Card className="border-0 bg-transparent shadow-none animate-in fade-in slide-in-from-top-4 duration-500">
+                                <CardContent className="p-0 space-y-4">
+                                    <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-md lg:shadow-lg border border-gray-100 dark:border-zinc-800">
+                                        <div className="space-y-4">
+                                            <div className="space-y-1">
+                                                <Label className="text-[#E60000] font-black text-xs uppercase tracking-widest">Select Network</Label>
+                                                <div className="flex gap-2 flex-wrap">
+                                                    {NETWORKS.map(net => (
+                                                        <Button
+                                                            key={net}
+                                                            variant={bulkNetwork === net ? "default" : "outline"}
+                                                            className={cn(
+                                                                "h-8 text-[10px] font-bold px-3 rounded-full transition-all",
+                                                                bulkNetwork === net ?
+                                                                    (net === 'MTN' ? 'bg-[#FFCC00] text-black hover:bg-[#FFCC00]/90 border-0' :
+                                                                        net === 'Telecel' ? 'bg-[#E60000] text-white hover:bg-[#E60000]/90 border-0' :
+                                                                            'bg-[#0056B3] text-white hover:bg-[#0056B3]/90 border-0')
+                                                                    : 'bg-transparent border-gray-200 dark:border-zinc-700'
+                                                            )}
+                                                            onClick={() => setBulkNetwork(net)}
+                                                            size="sm"
+                                                        >
+                                                            {net}
+                                                        </Button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {bulkInputType === 'text' ? (
+                                                <div className="space-y-4">
+                                                    <div className="text-center space-y-1 py-2">
+                                                        <h3 className="text-lg font-black text-black dark:text-white">Enter Your Orders</h3>
+                                                        <p className="text-xs font-bold text-gray-400">One order per line (e.g below)</p>
+                                                    </div>
+
+                                                    <div className="relative group">
+                                                        <div className="absolute left-3 top-3 flex flex-col items-center gap-[6.5px] pointer-events-none select-none">
+                                                            {[...Array(Math.max(5, bulkText.split('\n').length))].map((_, i) => (
+                                                                <span key={i} className="text-[10px] font-bold text-blue-400/50 h-[14px] flex items-center">{i + 1}</span>
+                                                            ))}
+                                                        </div>
+                                                        <textarea
+                                                            ref={textareaRef}
+                                                            className="w-full min-h-[120px] rounded-2xl border-2 border-gray-50 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-800/50 pl-10 pr-4 py-3 text-[11px] leading-tight text-black dark:text-white placeholder:text-gray-300 dark:placeholder:text-zinc-600 focus:outline-none focus:border-[#FFCE00] transition-colors font-mono font-bold resize-none overflow-hidden"
+                                                            placeholder={`0246677889 2\n0546627266 3`}
+                                                            value={bulkText}
+                                                            onChange={(e) => setBulkText(e.target.value)}
+                                                        />
+                                                    </div>
+
+                                                    <Button
+                                                        className="w-full bg-[#FFCE00] hover:bg-[#FFCE00]/90 text-black font-black py-6 rounded-2xl shadow-lg shadow-[#FFCE00]/20 text-sm"
+                                                        onClick={handleValidateBulk}
+                                                        disabled={isValidating}
+                                                    >
+                                                        {isValidating ? (
+                                                            <>
+                                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                                Validating...
+                                                            </>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2">
+                                                                <Check className="w-4 h-4" />
+                                                                Validate Orders
+                                                            </div>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    <div className="text-center space-y-1 py-2">
+                                                        <h3 className="text-lg font-black text-black dark:text-white">Excel Import</h3>
+                                                        <p className="text-xs font-bold text-gray-400">Upload your sheet with Phone and Volume columns</p>
+                                                    </div>
+
+                                                    <div
+                                                        className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl p-8 text-center bg-gray-50/30 dark:bg-zinc-800/30 hover:bg-gray-50/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer relative"
+                                                        onClick={() => document.getElementById('excel-upload')?.click()}
+                                                    >
+                                                        <input
+                                                            id="excel-upload"
+                                                            type="file"
+                                                            accept=".xlsx, .xls, .csv"
+                                                            className="hidden"
+                                                            onChange={handleFileChange}
+                                                        />
+                                                        <div className="flex flex-col items-center gap-2">
+                                                            <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-gray-100 dark:border-zinc-800">
+                                                                <Upload className="w-5 h-5 text-[#FFCE00]" />
+                                                            </div>
+                                                            <p className="text-xs font-bold text-black dark:text-white">
+                                                                {bulkFile ? bulkFile.name : 'Click to upload Excel file'}
+                                                            </p>
+                                                            <p className="text-[10px] text-gray-400">or drag and drop here</p>
+                                                        </div>
+                                                    </div>
+
+                                                    {bulkFile && (
+                                                        <Button
+                                                            className="w-full bg-[#FFCE00] hover:bg-[#FFCE00]/90 text-black font-black py-6 rounded-2xl shadow-lg shadow-[#FFCE00]/20 text-sm"
+                                                            onClick={handleValidateExcel}
+                                                            disabled={isValidating}
+                                                        >
+                                                            {isValidating ? (
+                                                                <>
+                                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                                    Validating...
+                                                                </>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2">
+                                                                    <Check className="w-4 h-4" />
+                                                                    Validate Excel
+                                                                </div>
+                                                            )}
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Validation Results */}
+                                    {validationResults.length > 0 && (
+                                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                            <div className="bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden shadow-lg border border-gray-100 dark:border-zinc-800">
+                                                <div className="bg-[#FFCE00] px-6 py-4 flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="bg-white/20 p-1 rounded-lg">
+                                                            <CheckCircle2 className="w-4 h-4 text-black" />
+                                                        </div>
+                                                        <h3 className="font-black text-black">Order List ({validationResults.length})</h3>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 text-[10px] font-bold text-black hover:bg-black/10 px-2"
+                                                            onClick={clearInvalid}
+                                                        >
+                                                            Clear All Invalid
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 text-[10px] font-bold text-red-600 hover:bg-red-50 px-2"
+                                                            onClick={clearAllResults}
+                                                        >
+                                                            Clear All
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="max-h-[300px] overflow-y-auto">
+                                                    <table className="w-full text-xs">
+                                                        <thead className="bg-gray-50/50 dark:bg-zinc-800/50 border-b border-gray-100 dark:border-zinc-800 sticky top-0 z-10">
+                                                            <tr>
+                                                                <th className="px-6 py-3 text-left font-black text-gray-400">STATUS</th>
+                                                                <th className="px-6 py-3 text-left font-black text-gray-400">RECIPIENT</th>
+                                                                <th className="px-6 py-3 text-left font-black text-gray-400">DATA</th>
+                                                                <th className="px-6 py-3 text-left font-black text-gray-400">PRICE</th>
+                                                                <th className="px-0 py-3 text-center"></th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
+                                                            {validationResults.map((res, i) => (
+                                                                <tr key={i} className="group hover:bg-gray-50/50 dark:hover:bg-zinc-800/50 transition-colors">
+                                                                    <td className="px-6 py-4">
+                                                                        <div className={cn(
+                                                                            "w-2 h-2 rounded-full",
+                                                                            res.isValid ? "bg-[#25D366]" : "bg-[#E60000]"
+                                                                        )} />
+                                                                    </td>
+                                                                    <td className="px-6 py-4 font-bold text-black dark:text-white">{res.phoneNumber}</td>
+                                                                    <td className="px-6 py-4 font-bold text-gray-500">{res.volume} GB</td>
+                                                                    <td className="px-6 py-4 font-black text-black dark:text-white">
+                                                                        {res.packagePrice > 0 ? formatCurrency(res.packagePrice) : '-'}
+                                                                    </td>
+                                                                    <td className="px-2 py-4">
+                                                                        <button
+                                                                            onClick={() => deleteResult(i)}
+                                                                            className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all"
+                                                                        >
+                                                                            <X className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            {/* Summary Container */}
+                                            <div className="bg-[#FFCE00] rounded-3xl p-4 shadow-xl relative overflow-hidden max-w-md mx-auto w-full">
+                                                <div className="grid grid-cols-2 gap-4 relative z-10 items-center">
+                                                    <div className="text-center space-y-0.5 border-r border-black/10">
+                                                        <p className="text-[9px] font-black text-black uppercase tracking-widest opacity-60">Total Cost</p>
+                                                        <h2 className="text-2xl font-black text-black leading-tight">{formatCurrency(totalBulkCost)}</h2>
+                                                        <p className="text-[9px] font-bold text-black opacity-60 uppercase tracking-tighter">Order value</p>
+                                                    </div>
+                                                    <div className="text-center space-y-0.5">
+                                                        <p className="text-[9px] font-black text-black uppercase tracking-widest opacity-60">Total Data</p>
+                                                        <h2 className="text-2xl font-black text-black leading-tight">{totalBulkData} <span className="text-sm">GB</span></h2>
+                                                        <p className="text-[9px] font-bold text-black opacity-60 uppercase tracking-tighter">Data Volume</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Submit Section */}
+                                            <div className="flex flex-col items-center justify-center gap-4 py-4 max-w-md mx-auto w-full">
+                                                {walletBalance < totalBulkCost ? (
+                                                    <Link href="/dashboard/wallet" className="w-full">
+                                                        <Button
+                                                            className="w-full bg-[#FFCE00] text-black hover:bg-[#FFCE00]/90 font-black py-6 rounded-2xl shadow-xl shadow-yellow-500/20 text-sm h-auto uppercase tracking-widest"
+                                                        >
+                                                            <DollarSign className="w-5 h-5 mr-2" />
+                                                            Recharge Wallet
+                                                        </Button>
+                                                    </Link>
+                                                ) : (
+                                                    <Button
+                                                        className="w-full bg-black text-[#FFCE00] hover:bg-black/90 font-black py-5 rounded-2xl shadow-xl shadow-black/10 text-sm h-auto flex flex-col items-center gap-1"
+                                                        onClick={handleSubmitBulkOrder}
+                                                        disabled={isSubmittingBulk || validationResults.filter(r => r.isValid).length === 0}
+                                                    >
+                                                        {isSubmittingBulk ? (
+                                                            <div className="flex items-center">
+                                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                                Processing...
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className="text-[10px] font-bold opacity-60 flex items-center gap-1 mb-1 bg-white/10 px-3 py-0.5 rounded-full">
+                                                                    <DollarSign className="w-2.5 h-2.5" />
+                                                                    Wallet Balance: {formatCurrency(walletBalance)}
+                                                                </div>
+                                                                <div className="flex items-center gap-2 text-base tracking-widest">
+                                                                    <CheckCircle2 className="w-5 h-5" />
+                                                                    SUBMIT ORDERS
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant={viewMode === 'grid' ? 'default' : 'outline'}
+                        size="icon"
+                        onClick={() => setViewMode('grid')}
+                    >
+                        <LayoutGrid className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        variant={viewMode === 'list' ? 'default' : 'outline'}
+                        size="icon"
+                        onClick={() => setViewMode('list')}
+                    >
+                        <List className="w-4 h-4" />
+                    </Button>
+                </div>
+            </div>
+
+            {/* Search */}
+            <div id="package-filters" className="relative max-w-md mx-auto w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                    placeholder="Search packages..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                />
+            </div>
+
+            {/* Network Tabs */}
+            <Tabs value={selectedNetwork} onValueChange={setSelectedNetwork}>
+                <TabsList className="grid grid-cols-4 gap-1 sm:gap-2 w-full">
+                    {NETWORKS.map((network) => {
+                        const getNetworkColor = () => {
+                            if (network === 'MTN') return 'data-[state=active]:bg-[#FACC15] data-[state=active]:text-black'
+                            if (network === 'Telecel') return 'data-[state=active]:bg-[#E60000] data-[state=active]:text-white'
+                            return 'data-[state=active]:bg-[#0056B3] data-[state=active]:text-white'
+                        }
+
+                        return (
+                            <TabsTrigger
+                                key={network}
+                                value={network}
+                                className={`flex items-center justify-center gap-1 text-xs sm:text-sm px-2 py-2 ${getNetworkColor()}`}
+                            >
+                                <NetworkIcon network={network} size={24} className="mr-1" />
+                                <span className="hidden sm:inline">{network}</span>
+                                <span className="sm:hidden">{network === 'AT-iShare' ? 'AT-iS' : network === 'AT-BigTime' ? 'AT-BT' : network}</span>
+                            </TabsTrigger>
+                        )
+                    })}
+                </TabsList>
+
+                <TabsContent id="packages-grid" value={selectedNetwork} className="mt-6">
+                    {filteredPackages.length === 0 ? (
+                        <Card className="p-12 text-center">
+                            <Wifi className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+                            <p className="text-muted-foreground">No packages found</p>
+                        </Card>
+                    ) : viewMode === 'grid' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 scroll-smooth">
+                            {filteredPackages.map((pkg) => {
+                                return (
+                                    <Card
+                                        key={pkg.id}
+                                        className={`overflow-hidden relative transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl border-0 shadow-lg shadow-black/40 dark:shadow-[#E5E7EB]/20 ${pkg.network === 'MTN' ? 'bg-[#FFCC00] text-black' :
+                                            pkg.network === 'Telecel' ? 'bg-[#E60000] text-white' :
+                                                'bg-[#0056B3] text-white'
+                                            }`}
+                                    >
+                                        <CardContent className="p-0 flex flex-col h-full">
+                                            {/* Top Section: Logo - Size - Badge */}
+                                            <div className="flex items-center justify-between p-4 pb-2 relative z-10">
+                                                <div className="p-1.5 bg-white/20 rounded-full backdrop-blur-sm shadow-md transition-transform duration-300 group-hover:scale-110">
+                                                    <NetworkIcon network={pkg.network} size={28} variant="card" />
+                                                </div>
+
+                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                    <h3 className={`text-4xl font-black tracking-tighter drop-shadow-sm ${pkg.network === 'MTN' ? '!text-black' : '!text-white'
+                                                        }`}>
+                                                        {pkg.size}
+                                                    </h3>
+                                                </div>
+
+                                                <Badge className={`text-[10px] font-bold px-2 py-0.5 border-none shadow-md uppercase tracking-wider ${pkg.network === 'MTN' ? 'bg-[#004F9F] text-white' :
+                                                    'bg-white text-black'
+                                                    }`}>
+                                                    {pkg.network}
+                                                </Badge>
+                                            </div>
+
+                                            {/* Middle Content: Price & Description */}
+                                            <div className="flex flex-col items-center justify-center flex-1 space-y-3 py-6 relative z-10">
+                                                <div className="text-3xl lg:text-4xl font-black tracking-tighter drop-shadow-md transform transition-transform duration-300 group-hover:scale-110">
+                                                    {formatCurrency(getEffectivePrice(pkg))}
+                                                </div>
+
+                                                <div className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wide px-4 py-1.5 rounded-full shadow-lg backdrop-blur-md border border-white/10 ${pkg.network === 'MTN' ? 'bg-black/10 text-black' : 'bg-white/10 text-white'
+                                                    }`}>
+                                                    <span className="animate-spin-pause text-base">⏳</span>
+                                                    <span className="flex items-center gap-1">
+                                                        Instant Delivery
+                                                        <span className="animate-pulse">⚡</span>
+                                                    </span>
+                                                </div>
+                                                {pkg.description && pkg.description !== 'Instant Delivery' && (
+                                                    <p className={`text-[10px] font-bold opacity-90 px-4 text-center line-clamp-1`}>
+                                                        {pkg.description}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {/* Bottom: Full Width Button */}
+                                            <div className="mt-auto pt-2">
+                                                <Button
+                                                    className={`w-full rounded-t-none rounded-b-xl h-12 text-md font-bold uppercase tracking-widest border-0 rounded-none transition-colors shadow-none ${pkg.network === 'MTN' ? 'bg-[#1a1a1a] text-white hover:bg-black' :
+                                                        pkg.network === 'Telecel' ? 'bg-white text-[#E60000] hover:bg-gray-100' :
+                                                            'bg-white text-[#0056B3] hover:bg-gray-100'
+                                                        }`}
+                                                    onClick={() => handlePurchaseClick(pkg)}
+                                                >
+                                                    <ShoppingCart className="w-4 h-4 mr-2" />
+                                                    Buy Now
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )
+                            })}
+                        </div>
+                    ) : (
+                        <div className="space-y-3 scroll-smooth">
+                            {filteredPackages.map((pkg) => {
+                                const getBuyButtonStyle = () => {
+                                    if (pkg.network === 'Telecel') {
+                                        return 'bg-[#FFFFFF] text-[#E60000] hover:bg-gray-100 border-0 shadow-md hover:shadow-lg transition-all hover:scale-105 font-bold px-6'
+                                    }
+                                    if (pkg.network.startsWith('AT')) {
+                                        return 'bg-[#FFFFFF] text-[#0056B3] hover:bg-gray-100 border-0 shadow-md hover:shadow-lg transition-all hover:scale-105 font-bold px-6'
+                                    }
+                                    return 'bg-[#1a1a1a] text-white hover:bg-black border-0 shadow-md hover:shadow-lg transition-all hover:scale-105 font-bold px-6'
+                                }
+
+                                return (
+                                    <Card
+                                        key={pkg.id}
+                                        className={`group hover:shadow-lg transition-all cursor-pointer border-0 mb-3 overflow-hidden ${pkg.network === 'MTN' ? 'bg-[#FACC15] text-black' :
+                                            pkg.network === 'Telecel' ? 'bg-[#E60000] text-white' :
+                                                'bg-[#0056B3] text-white'
+                                            }`}
+                                        onClick={() => handlePurchaseClick(pkg)}
+                                    >
+                                        <CardContent className="p-4 flex items-center justify-between">
+                                            <div className="flex items-center gap-5">
+                                                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm shadow-sm">
+                                                    <NetworkIcon network={pkg.network} size={40} />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-3 mb-1">
+                                                        <h3 className="font-bold text-lg leading-none">{pkg.size}</h3>
+                                                        <Badge variant="outline" className={`text-[10px] font-bold px-2 py-0.5 border-current ${pkg.network === 'MTN' ? 'text-black border-black/20' : 'text-white border-white/20'
+                                                            }`}>
+                                                            {pkg.network}
+                                                        </Badge>
+                                                    </div>
+                                                    <p className={`text-xs font-medium ${pkg.network === 'MTN' ? 'text-black/70' : 'text-white/80'
+                                                        }`}>
+                                                        {pkg.description || 'Data Bundle'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-6">
+                                                <span className="text-xl font-black">{formatCurrency(getEffectivePrice(pkg))}</span>
+                                                <Button
+                                                    size="sm"
+                                                    className={getBuyButtonStyle()}
+                                                >
+                                                    Buy
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )
+                            })}
+                        </div>
+                    )}
+                </TabsContent>
+            </Tabs>
+
+            {/* Purchase Dialog */}
+            <Dialog open={!!selectedPackage} onOpenChange={() => setSelectedPackage(null)}>
+                <DialogContent className="w-[95%] max-w-sm sm:max-w-md rounded-2xl p-4 sm:p-6">
+                    {purchaseSuccess ? (
+                        <div className="text-center py-6">
+                            <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
+                                <CheckCircle2 className="w-8 h-8 text-green-600" />
+                            </div>
+                            <DialogTitle className="text-xl mb-2">Order Placed Successfully!</DialogTitle>
+                            <DialogDescription>
+                                {selectedPackage?.size} has been ordered for {phoneNumber}.
+                                Your data will be delivered shortly.
+                            </DialogDescription>
+                            <Button className="mt-6" onClick={() => setSelectedPackage(null)}>
+                                Done
+                            </Button>
+                        </div>
+                    ) : (
+                        <>
+                            <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2">
+                                    <span className="flex items-center justify-center">
+                                        <NetworkIcon network={selectedPackage?.network || ''} size={32} />
+                                    </span>
+                                    Buy {selectedPackage?.size}
+                                </DialogTitle>
+                                <DialogDescription>
+                                    Enter the phone number to receive the data bundle
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="space-y-4 py-4">
+                                <div className="p-4 rounded-xl bg-muted/50">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-sm text-muted-foreground">Package</span>
+                                        <Badge>{selectedPackage?.network}</Badge>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-lg font-semibold">{selectedPackage?.size}</span>
+                                        <span className="text-lg font-bold text-primary">
+                                            {selectedPackage && formatCurrency(getEffectivePrice(selectedPackage))}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone">Phone Number</Label>
+                                    <Input
+                                        id="phone"
+                                        type="tel"
+                                        placeholder="0241234567"
+                                        value={phoneNumber}
+                                        onChange={(e) => handlePhoneChange(e.target.value)}
+                                        className={phoneError ? 'border-red-500' : ''}
+                                    />
+                                    {phoneError && (
+                                        <p className="text-sm text-red-500 flex items-center gap-1">
+                                            <AlertCircle className="w-4 h-4" />
+                                            {phoneError}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {walletBalance < (selectedPackage ? getEffectivePrice(selectedPackage) : 0) && (
+                                    <Alert variant="destructive">
+                                        <AlertCircle className="w-4 h-4" />
+                                        <AlertDescription>
+                                            Insufficient balance. Please top up your wallet.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+
+                                <div className="text-sm text-muted-foreground">
+                                    Wallet Balance: <span className="font-medium text-foreground">{formatCurrency(walletBalance)}</span>
+                                </div>
+                            </div>
+
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setSelectedPackage(null)}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={handlePurchase}
+                                    disabled={isPurchasing || !phoneNumber || !!phoneError || walletBalance < (selectedPackage ? getEffectivePrice(selectedPackage) : 0)}
+                                >
+                                    {isPurchasing ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        `Pay ${selectedPackage && formatCurrency(getEffectivePrice(selectedPackage))}`
+                                    )}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
+        </div>
+    )
+}

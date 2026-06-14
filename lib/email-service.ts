@@ -1,0 +1,1166 @@
+/**
+ * Brevo Email Service
+ * 
+ * This service handles all transactional emails using Brevo (formerly Sendinblue).
+ * Premium high-end email templates for KING FLEXY DATA LTD.
+ */
+
+// @ts-ignore - Brevo SDK doesn't have complete type definitions
+import * as SibApiV3Sdk from '@getbrevo/brevo'
+import { createClient } from '@supabase/supabase-js'
+
+// Initialize API instance with API key
+const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi()
+
+// Set API key using the correct method
+// @ts-ignore - SDK type definitions are incomplete
+apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || '')
+
+// Sender configuration
+const DEFAULT_SENDER = {
+    name: process.env.BREVO_SENDER_NAME || 'MDataGH',
+    email: process.env.BREVO_SENDER_EMAIL || 'noreply@mdatagh.com'
+}
+
+interface SendEmailOptions {
+    to: string
+    toName?: string
+    subject: string
+    htmlContent: string
+}
+
+interface EmailResult {
+    success: boolean
+    messageId?: string
+    error?: string
+}
+
+/**
+ * Core function to send transactional email via Brevo
+ */
+export async function sendEmail(options: SendEmailOptions): Promise<EmailResult> {
+    if (!process.env.BREVO_API_KEY) {
+        console.warn('BREVO_API_KEY not set. Email not sent.')
+        return { success: false, error: 'Email service not configured' }
+    }
+
+    try {
+        const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail()
+
+        sendSmtpEmail.sender = DEFAULT_SENDER
+        sendSmtpEmail.to = [{ email: options.to, name: options.toName || options.to }]
+        sendSmtpEmail.subject = options.subject
+        sendSmtpEmail.htmlContent = options.htmlContent
+
+        const data = await apiInstance.sendTransacEmail(sendSmtpEmail)
+        const rawMessageId = data.body?.messageId || data.response?.headers?.['x-message-id']
+        const messageId = Array.isArray(rawMessageId) ? rawMessageId[0] : rawMessageId
+        console.log('Email sent successfully:', messageId)
+
+        return { success: true, messageId }
+    } catch (error: any) {
+        console.error('Failed to send email:', error.response?.body || error.message)
+        return {
+            success: false,
+            error: error.response?.body?.message || error.message || 'Failed to send email'
+        }
+    }
+}
+
+/**
+ * Premium high-end HTML email template
+ */
+function generatePremiumTemplate(title: string, content: string, accentColor: string = '#D4AF37'): string {
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>${title}</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.7;
+            color: #1a1a2e;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        
+        .email-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .email-container {
+            background: #ffffff;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(212, 175, 55, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+            padding: 50px 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, ${accentColor}, #f5e6a3, ${accentColor});
+        }
+        
+        .header::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        
+        .logo-container {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .logo-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, ${accentColor} 0%, #f5e6a3 50%, ${accentColor} 100%);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
+        }
+        
+        .logo-text {
+            font-size: 36px;
+            color: #1a1a2e;
+            font-weight: 700;
+        }
+        
+        .brand-name {
+            font-size: 26px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        .brand-tagline {
+            font-size: 13px;
+            color: ${accentColor};
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+        
+        .content {
+            padding: 50px 40px;
+        }
+        
+        .greeting {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #64748b;
+            margin-bottom: 35px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .message-text {
+            font-size: 15px;
+            color: #475569;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        
+        .info-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 16px;
+            padding: 30px;
+            margin: 30px 0;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .info-card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .info-card-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, ${accentColor} 0%, #f5e6a3 100%);
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 20px;
+        }
+        
+        .info-card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        
+        .info-label {
+            font-size: 14px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        
+        .info-value {
+            font-size: 14px;
+            color: #1a1a2e;
+            font-weight: 600;
+            text-align: right;
+        }
+        
+        .amount-display {
+            text-align: center;
+            padding: 35px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 20px;
+            margin: 30px 0;
+        }
+        
+        .amount-label {
+            font-size: 13px;
+            color: rgba(255,255,255,0.7);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+        
+        .amount-value {
+            font-size: 42px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+        
+        .amount-currency {
+            color: ${accentColor};
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .status-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+        }
+        
+        .status-failed {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: #ffffff;
+        }
+        
+        .status-pending {
+            background: linear-gradient(135deg, ${accentColor} 0%, #f5e6a3 100%);
+            color: #1a1a2e;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, ${accentColor} 0%, #f5e6a3 50%, ${accentColor} 100%);
+            background-size: 200% 200%;
+            color: #1a1a2e !important;
+            text-decoration: none;
+            padding: 16px 40px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .cta-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+            margin: 40px 0;
+        }
+        
+        .footer {
+            background: #f8fafc;
+            padding: 35px 40px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer-text {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 15px;
+        }
+        
+        .footer-links {
+            margin-bottom: 20px;
+        }
+        
+        .footer-link {
+            color: #1a1a2e;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            margin: 0 15px;
+        }
+        
+        .footer-copyright {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(245, 230, 163, 0.1) 100%);
+            border-left: 4px solid ${accentColor};
+            padding: 20px 25px;
+            border-radius: 0 12px 12px 0;
+            margin: 25px 0;
+        }
+        
+        .highlight-text {
+            font-size: 14px;
+            color: #1a1a2e;
+            font-weight: 500;
+        }
+        
+        @media only screen and (max-width: 600px) {
+            body {
+                padding: 20px 15px;
+            }
+            .header {
+                padding: 35px 25px;
+            }
+            .content {
+                padding: 35px 25px;
+            }
+            .footer {
+                padding: 25px 20px;
+            }
+            .greeting {
+                font-size: 24px;
+            }
+            .brand-name {
+                font-size: 22px;
+            }
+            .amount-value {
+                font-size: 34px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <div class="email-container">
+            <div class="header">
+                <div class="logo-container">
+                    <div class="logo-icon">
+                        <span class="logo-text">K</span>
+                    </div>
+                    <div class="brand-name">MDataGH</div>
+                    <div class="brand-tagline">Premium Data Solutions</div>
+                </div>
+            </div>
+            <div class="content">
+                ${content}
+            </div>
+            <div class="footer">
+                <div class="footer-links">
+                    <a href="${process.env.NEXT_PUBLIC_APP_URL}" class="footer-link">Website</a>
+                    <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" class="footer-link">Dashboard</a>
+                    <a href="mailto:support@mdatagh.com" class="footer-link">Support</a>
+                </div>
+                <p class="footer-text">
+                    Questions? Reply to this email or contact us at<br>
+                    <strong>support@mdatagh.com</strong>
+                </p>
+                <p class="footer-copyright">
+                    © ${new Date().getFullYear()} MDataGH. All rights reserved.<br>
+                    Ghana's Premium Data Reseller Platform
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`
+}
+
+// ==========================================
+// USER EMAIL FUNCTIONS
+// ==========================================
+
+/**
+ * Send welcome email after user registration
+ */
+export async function sendWelcomeEmail(
+    email: string,
+    firstName: string
+): Promise<EmailResult> {
+    const content = `
+        <h1 class="greeting">Welcome, ${firstName}! 🎉</h1>
+        <p class="subtitle">Your premium data journey begins now</p>
+        
+        <p class="message-text">
+            Thank you for joining <strong>MDataGH</strong> – Ghana's most trusted 
+            premium data reseller platform. Your account has been successfully created and 
+            you're now part of an exclusive community.
+        </p>
+        
+        <div class="info-card">
+            <div class="info-card-header">
+                <div class="info-card-icon">✨</div>
+                <span class="info-card-title">What You Can Do</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">💰 Fund Wallet</span>
+                <span class="info-value">Instant Paystack top-up</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">📱 Buy Data</span>
+                <span class="info-value">MTN, Telecel, AirtelTigo</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">👥 Manage Customers</span>
+                <span class="info-value">Track all your recipients</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">📊 Real-time Tracking</span>
+                <span class="info-value">Monitor every order</span>
+            </div>
+        </div>
+        
+        <div class="cta-container">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" class="cta-button">
+                Access Your Dashboard
+            </a>
+        </div>
+        
+        <div class="highlight-box">
+            <p class="highlight-text">
+                💡 <strong>Pro Tip:</strong> Fund your wallet now and start enjoying the best 
+                data prices in Ghana. Our rates are unbeatable!
+            </p>
+        </div>
+    `
+
+    return sendEmail({
+        to: email,
+        toName: firstName,
+        subject: `Welcome to MDataGH, ${firstName}! 🎉`,
+        htmlContent: generatePremiumTemplate('Welcome', content)
+    })
+}
+
+/**
+ * Send order placed success email to user
+ */
+export async function sendOrderSuccessEmail(
+    email: string,
+    firstName: string,
+    orderDetails: {
+        referenceCode: string
+        phoneNumber: string
+        network: string
+        size: string
+        price: number
+    }
+): Promise<EmailResult> {
+    const content = `
+        <h1 class="greeting">Order Placed Successfully! ✅</h1>
+        <p class="subtitle">Your data order is being processed</p>
+        
+        <p class="message-text">
+            Hi ${firstName}, your order has been received and is now being processed. 
+            The data bundle will be delivered to the recipient shortly.
+        </p>
+        
+        <div class="info-card">
+            <div class="info-card-header">
+                <div class="info-card-icon">📦</div>
+                <span class="info-card-title">Order Details</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Reference</span>
+                <span class="info-value">${orderDetails.referenceCode}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Recipient</span>
+                <span class="info-value">${orderDetails.phoneNumber}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Network</span>
+                <span class="info-value">${orderDetails.network}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Package</span>
+                <span class="info-value">${orderDetails.size}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Amount Paid</span>
+                <span class="info-value" style="color: #10b981; font-size: 16px;">GHS ${orderDetails.price.toFixed(2)}</span>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin: 25px 0;">
+            <span class="status-badge status-pending">Processing</span>
+        </div>
+        
+        <div class="cta-container">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/my-orders" class="cta-button">
+                Track Your Order
+            </a>
+        </div>
+    `
+
+    return sendEmail({
+        to: email,
+        toName: firstName,
+        subject: `Order Confirmed - ${orderDetails.referenceCode}`,
+        htmlContent: generatePremiumTemplate('Order Confirmed', content)
+    })
+}
+
+/**
+ * Send order failed email to user
+ */
+export async function sendOrderFailedEmail(
+    email: string,
+    firstName: string,
+    orderDetails: {
+        referenceCode: string
+        phoneNumber: string
+        network: string
+        size: string
+        reason?: string
+    }
+): Promise<EmailResult> {
+    const content = `
+        <h1 class="greeting">Order Failed ❌</h1>
+        <p class="subtitle">We couldn't process your order</p>
+        
+        <p class="message-text">
+            Hi ${firstName}, we're sorry but we were unable to complete your data order. 
+            Please don't worry – you can file a complaint to request a refund.
+        </p>
+        
+        <div class="info-card">
+            <div class="info-card-header">
+                <div class="info-card-icon">📦</div>
+                <span class="info-card-title">Order Details</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Reference</span>
+                <span class="info-value">${orderDetails.referenceCode}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Recipient</span>
+                <span class="info-value">${orderDetails.phoneNumber}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Network</span>
+                <span class="info-value">${orderDetails.network}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Package</span>
+                <span class="info-value">${orderDetails.size}</span>
+            </div>
+            ${orderDetails.reason ? `
+            <div class="info-row">
+                <span class="info-label">Reason</span>
+                <span class="info-value" style="color: #ef4444;">${orderDetails.reason}</span>
+            </div>
+            ` : ''}
+        </div>
+        
+        <div style="text-align: center; margin: 25px 0;">
+            <span class="status-badge status-failed">Failed</span>
+        </div>
+        
+        <div class="highlight-box">
+            <p class="highlight-text">
+                ⚠️ <strong>Next Steps:</strong> Visit your orders page and file a complaint 
+                to request a refund. Our team will process it within 24 hours.
+            </p>
+        </div>
+        
+        <div class="cta-container">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/my-orders" class="cta-button">
+                File a Complaint
+            </a>
+        </div>
+    `
+
+    return sendEmail({
+        to: email,
+        toName: firstName,
+        subject: `Order Failed - ${orderDetails.referenceCode}`,
+        htmlContent: generatePremiumTemplate('Order Failed', content, '#ef4444')
+    })
+}
+
+/**
+ * Send wallet top-up success email to user
+ */
+export async function sendWalletTopupSuccessEmail(
+    email: string,
+    firstName: string,
+    amount: number,
+    reference: string,
+    newBalance: number
+): Promise<EmailResult> {
+    const content = `
+        <h1 class="greeting">Wallet Top-up Successful! 💰</h1>
+        <p class="subtitle">Your funds have been added</p>
+        
+        <div class="amount-display">
+            <p class="amount-label">Amount Credited</p>
+            <p class="amount-value"><span class="amount-currency">GHS</span> ${amount.toFixed(2)}</p>
+        </div>
+        
+        <p class="message-text">
+            Hi ${firstName}, your wallet has been successfully credited. You can now 
+            use your balance to purchase data bundles for any network.
+        </p>
+        
+        <div class="info-card">
+            <div class="info-card-header">
+                <div class="info-card-icon">🧾</div>
+                <span class="info-card-title">Transaction Details</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Reference</span>
+                <span class="info-value">${reference}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Payment Method</span>
+                <span class="info-value">Paystack</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">New Balance</span>
+                <span class="info-value" style="color: #10b981; font-size: 16px;">GHS ${newBalance.toFixed(2)}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Date</span>
+                <span class="info-value">${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin: 25px 0;">
+            <span class="status-badge status-success">Completed</span>
+        </div>
+        
+        <div class="cta-container">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/data-packages" class="cta-button">
+                Buy Data Now
+            </a>
+        </div>
+    `
+
+    return sendEmail({
+        to: email,
+        toName: firstName,
+        subject: `Wallet Credited - GHS ${amount.toFixed(2)} ✅`,
+        htmlContent: generatePremiumTemplate('Wallet Credited', content, '#10b981')
+    })
+}
+
+/**
+ * Send wallet top-up failed email to user
+ */
+export async function sendWalletTopupFailedEmail(
+    email: string,
+    firstName: string,
+    amount: number,
+    reference: string,
+    reason?: string
+): Promise<EmailResult> {
+    const content = `
+        <h1 class="greeting">Payment Failed ❌</h1>
+        <p class="subtitle">Your wallet top-up was not completed</p>
+        
+        <div class="amount-display" style="background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);">
+            <p class="amount-label">Attempted Amount</p>
+            <p class="amount-value"><span class="amount-currency" style="color: #fca5a5;">GHS</span> ${amount.toFixed(2)}</p>
+        </div>
+        
+        <p class="message-text">
+            Hi ${firstName}, unfortunately your wallet top-up could not be completed. 
+            If any amount was deducted from your account, it will be automatically 
+            reversed within 24-48 hours.
+        </p>
+        
+        <div class="info-card">
+            <div class="info-card-header">
+                <div class="info-card-icon">🧾</div>
+                <span class="info-card-title">Transaction Details</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Reference</span>
+                <span class="info-value">${reference}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Payment Method</span>
+                <span class="info-value">Paystack</span>
+            </div>
+            ${reason ? `
+            <div class="info-row">
+                <span class="info-label">Reason</span>
+                <span class="info-value" style="color: #ef4444;">${reason}</span>
+            </div>
+            ` : ''}
+            <div class="info-row">
+                <span class="info-label">Date</span>
+                <span class="info-value">${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin: 25px 0;">
+            <span class="status-badge status-failed">Failed</span>
+        </div>
+        
+        <div class="highlight-box">
+            <p class="highlight-text">
+                💡 <strong>What to do:</strong> Please try again with a different payment 
+                method or contact your bank if the issue persists.
+            </p>
+        </div>
+        
+        <div class="cta-container">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet" class="cta-button">
+                Try Again
+            </a>
+        </div>
+    `
+
+    return sendEmail({
+        to: email,
+        toName: firstName,
+        subject: `Payment Failed - GHS ${amount.toFixed(2)}`,
+        htmlContent: generatePremiumTemplate('Payment Failed', content, '#ef4444')
+    })
+}
+
+/**
+ * Send complaint resolved email to user
+ */
+export async function sendComplaintResolvedEmail(
+    email: string,
+    firstName: string,
+    complaintDetails: {
+        orderRef: string
+        status: string
+        resolutionNotes: string
+    }
+): Promise<EmailResult> {
+    const isResolved = complaintDetails.status === 'resolved'
+    const statusColor = isResolved ? '#10b981' : '#ef4444' // Green or Red
+    const statusText = isResolved ? 'Resolved' : 'Rejected'
+    const statusBadgeClass = isResolved ? 'status-success' : 'status-failed'
+
+    const content = `
+        <h1 class="greeting">Complaint Update 🔔</h1>
+        <p class="subtitle">There is an update on your complaint</p>
+        
+        <p class="message-text">
+            Hi ${firstName}, your complaint regarding order <strong>${complaintDetails.orderRef}</strong> has been updated.
+        </p>
+        
+        <div class="info-card">
+            <div class="info-card-header">
+                <div class="info-card-icon">📝</div>
+                <span class="info-card-title">Complaint Details</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Order Reference</span>
+                <span class="info-value">${complaintDetails.orderRef}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Status</span>
+                <span class="info-value">
+                    <span class="status-badge ${statusBadgeClass}" style="padding: 4px 12px; font-size: 11px;">${statusText}</span>
+                </span>
+            </div>
+            <div class="info-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                <span class="info-label">Resolution Notes</span>
+                <span class="info-value" style="text-align: left; background: rgba(0,0,0,0.03); padding: 10px; border-radius: 8px; width: 100%; font-weight: 400;">
+                    ${complaintDetails.resolutionNotes || 'No additional notes provided.'}
+                </span>
+            </div>
+        </div>
+        
+        <div class="cta-container">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/complaints" class="cta-button">
+                View Complaint
+            </a>
+        </div>
+    `
+
+    return sendEmail({
+        to: email,
+        toName: firstName,
+        subject: `Complaint Update - ${complaintDetails.orderRef} [${statusText}]`,
+        htmlContent: generatePremiumTemplate(`Complaint ${statusText}`, content, statusColor)
+    })
+}
+
+/**
+ * Send new complaint alert to admin
+ */
+export async function sendAdminNewComplaintAlert(
+    complaintDetails: {
+        userEmail: string
+        userName: string
+        orderRef: string
+        title: string
+        description: string
+        priority: string
+    }
+): Promise<EmailResult> {
+    const adminEmail = process.env.ADMIN_EMAIL || 'support@mydatagh.com'
+
+    const content = `
+        <h1 class="greeting">New Complaint Alert 🚨</h1>
+        <p class="subtitle">A user has filed a new complaint</p>
+        
+        <div class="info-card">
+            <div class="info-card-header">
+                <div class="info-card-icon">👤</div>
+                <span class="info-card-title">User Details</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Name</span>
+                <span class="info-value">${complaintDetails.userName}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Email</span>
+                <span class="info-value">${complaintDetails.userEmail}</span>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-card-header">
+                <div class="info-card-icon">⚠️</div>
+                <span class="info-card-title">Complaint Details</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Order Ref</span>
+                <span class="info-value">${complaintDetails.orderRef}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Priority</span>
+                <span class="info-value" style="color: ${complaintDetails.priority === 'high' ? '#ef4444' : '#f59e0b'}">
+                    ${complaintDetails.priority.toUpperCase()}
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Title</span>
+                <span class="info-value">${complaintDetails.title}</span>
+            </div>
+            <div class="info-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                <span class="info-label">Description</span>
+                <span class="info-value" style="text-align: left; background: rgba(0,0,0,0.03); padding: 10px; border-radius: 8px; width: 100%; font-weight: 400;">
+                    ${complaintDetails.description}
+                </span>
+            </div>
+        </div>
+        
+        <div class="cta-container">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/complaints" class="cta-button">
+                Process Complaint
+            </a>
+        </div>
+    `
+
+    return sendEmail({
+        to: adminEmail,
+        toName: 'Admin',
+        subject: `[New Complaint] ${complaintDetails.title} - ${complaintDetails.orderRef}`,
+        htmlContent: generatePremiumTemplate('New Complaint', content, '#ef4444')
+    })
+}
+
+// ==========================================
+// ADMIN EMAIL FUNCTIONS
+// ==========================================
+
+/**
+ * Send new order alert to admin and all sub-admins
+ */
+export async function sendAdminNewOrderAlert(
+    orderDetails: {
+        referenceCode: string
+        phoneNumber: string
+        network: string
+        size: string
+        price: number
+        customerName: string
+        customerEmail: string
+    }
+): Promise<EmailResult> {
+    const adminEmail = process.env.ADMIN_EMAIL || 'support@mydatagh.com'
+
+    const content = `
+        <h1 class="greeting">New Order Received! 🔔</h1>
+        <p class="subtitle">A new data order has been placed</p>
+        
+        <div class="amount-display">
+            <p class="amount-label">Order Value</p>
+            <p class="amount-value"><span class="amount-currency">GHS</span> ${orderDetails.price.toFixed(2)}</p>
+        </div>
+        
+        <div class="info-card">
+            <div class="info-card-header">
+                <div class="info-card-icon">📦</div>
+                <span class="info-card-title">Order Information</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Reference</span>
+                <span class="info-value">${orderDetails.referenceCode}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Beneficiary Number</span>
+                <span class="info-value" style="font-size: 16px; color: #D4AF37;">${orderDetails.phoneNumber}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Network</span>
+                <span class="info-value">${orderDetails.network}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Product</span>
+                <span class="info-value" style="font-size: 16px; color: #10b981;">${orderDetails.size}</span>
+            </div>
+        </div>
+        
+        <div class="info-card">
+            <div class="info-card-header">
+                <div class="info-card-icon">👤</div>
+                <span class="info-card-title">Customer Information</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Customer Name</span>
+                <span class="info-value">${orderDetails.customerName}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Customer Email</span>
+                <span class="info-value">${orderDetails.customerEmail}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Order Time</span>
+                <span class="info-value">${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+        </div>
+        
+        <div class="cta-container">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/orders" class="cta-button">
+                View in Admin Panel
+            </a>
+        </div>
+    `
+
+    // Send to main admin
+    const adminResult = await sendEmail({
+        to: adminEmail,
+        toName: 'Admin',
+        subject: `🔔 New Order: ${orderDetails.size} for ${orderDetails.phoneNumber}`,
+        htmlContent: generatePremiumTemplate('New Order Alert', content)
+    })
+
+    // Send to sub-admins (hardcoded list + database lookup)
+    try {
+        // Hardcoded sub-admin emails (excluding main admin to avoid duplicates)
+        const hardcodedSubAdmins = [
+            { email: 'dcosei164@gmail.com', first_name: 'Sub-Admin' },
+            { email: 'boahenjoycelyn677@gmail.com', first_name: 'Sub-Admin' }
+        ]
+
+        // Also try to fetch from database
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+        let dbSubAdmins: Array<{ email: string, first_name: string }> = []
+
+        if (supabaseUrl && supabaseServiceKey) {
+            const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+            const { data, error } = await supabase
+                .from('users')
+                .select('email, first_name')
+                .eq('role', 'sub-admin')
+
+            if (!error && data) {
+                dbSubAdmins = data as Array<{ email: string, first_name: string }>
+            }
+        }
+
+        // Combine hardcoded and database sub-admins, remove duplicates and main admin email
+        const allEmails = new Set<string>()
+        const allSubAdmins: Array<{ email: string, first_name: string }> = []
+
+        // Add hardcoded first
+        hardcodedSubAdmins.forEach(sa => {
+            const emailLower = sa.email.toLowerCase()
+            // Skip if already added or if it's the main admin email
+            if (!allEmails.has(emailLower) && emailLower !== adminEmail.toLowerCase()) {
+                allEmails.add(emailLower)
+                allSubAdmins.push(sa)
+            }
+        })
+
+        // Add from database (if not already in hardcoded list and not main admin)
+        dbSubAdmins.forEach(sa => {
+            const emailLower = sa.email.toLowerCase()
+            // Skip if already added or if it's the main admin email
+            if (!allEmails.has(emailLower) && emailLower !== adminEmail.toLowerCase()) {
+                allEmails.add(emailLower)
+                allSubAdmins.push(sa)
+            }
+        })
+
+        if (allSubAdmins.length > 0) {
+            // Send email to each sub-admin in parallel
+            const subAdminPromises = allSubAdmins.map(subAdmin =>
+                sendEmail({
+                    to: subAdmin.email,
+                    toName: subAdmin.first_name || 'Sub-Admin',
+                    subject: `🔔 New Order: ${orderDetails.size} for ${orderDetails.phoneNumber}`,
+                    htmlContent: generatePremiumTemplate('New Order Alert', content)
+                })
+            )
+
+            await Promise.allSettled(subAdminPromises)
+            console.log(`Order notification sent to ${allSubAdmins.length} sub-admin(s): ${allSubAdmins.map(s => s.email).join(', ')}`)
+        }
+    } catch (error) {
+        console.error('Error sending to sub-admins:', error)
+        // Don't fail the main function if sub-admin emails fail
+    }
+
+    return adminResult
+}
+
+/**
+ * Send welcome notification to admin when new user signs up
+ */
+export async function sendAdminNewUserAlert(
+    userDetails: {
+        firstName: string
+        lastName: string
+        email: string
+        phoneNumber: string
+    }
+): Promise<EmailResult> {
+    const adminEmail = process.env.ADMIN_EMAIL || 'support@mydatagh.com'
+
+    const content = `
+        <h1 class="greeting">New User Registration! 👤</h1>
+        <p class="subtitle">A new user has joined the platform</p>
+        
+        <div class="info-card">
+            <div class="info-card-header">
+                <div class="info-card-icon">✨</div>
+                <span class="info-card-title">New User Details</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Full Name</span>
+                <span class="info-value">${userDetails.firstName} ${userDetails.lastName}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Email</span>
+                <span class="info-value">${userDetails.email}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Phone Number</span>
+                <span class="info-value">${userDetails.phoneNumber}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Joined At</span>
+                <span class="info-value">${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+        </div>
+        
+        <div class="cta-container">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/users" class="cta-button">
+                View in Admin Panel
+            </a>
+        </div>
+    `
+
+    return sendEmail({
+        to: adminEmail,
+        toName: 'Admin',
+        subject: `👤 New User: ${userDetails.firstName} ${userDetails.lastName}`,
+        htmlContent: generatePremiumTemplate('New User Alert', content)
+    })
+}

@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+export async function GET(request: NextRequest) {
+    try {
+        // admin_settings has a public read RLS policy, so the anon key is
+        // sufficient here - no need for the service-role key.
+        const supabaseAnon = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
+        )
+
+        // Fetch prices from admin_settings (including old prices and strikethrough toggle)
+        const { data, error } = await supabaseAnon
+            .from('admin_settings')
+            .select('key, value')
+            .in('key', [
+                'agent_upgrade_price_3d', 'agent_upgrade_price_14d', 'agent_upgrade_price_30d',
+                'agent_upgrade_price_3d_old', 'agent_upgrade_price_14d_old', 'agent_upgrade_price_30d_old',
+                'show_price_strikethrough'
+            ])
+
+        if (error) {
+            console.error('Error fetching prices:', error)
+            return NextResponse.json({ error: error.message }, { status: 500 })
+        }
+
+        const prices = {
+            '3d': parseFloat(data?.find(s => s.key === 'agent_upgrade_price_3d')?.value || '9.99'),
+            '14d': parseFloat(data?.find(s => s.key === 'agent_upgrade_price_14d')?.value || '49.99'),
+            '30d': parseFloat(data?.find(s => s.key === 'agent_upgrade_price_30d')?.value || '99.99')
+        }
+
+        const oldPrices = {
+            '3d': parseFloat(data?.find(s => s.key === 'agent_upgrade_price_3d_old')?.value || '0'),
+            '14d': parseFloat(data?.find(s => s.key === 'agent_upgrade_price_14d_old')?.value || '0'),
+            '30d': parseFloat(data?.find(s => s.key === 'agent_upgrade_price_30d_old')?.value || '0')
+        }
+
+        const showStrikethrough = data?.find(s => s.key === 'show_price_strikethrough')?.value === 'true'
+
+        return NextResponse.json({ prices, oldPrices, showStrikethrough })
+
+    } catch (error: any) {
+        console.error('Error in get-prices API:', error)
+        return NextResponse.json(
+            { error: error.message || 'Internal server error' },
+            { status: 500 }
+        )
+    }
+}
