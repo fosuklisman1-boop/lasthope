@@ -258,9 +258,6 @@ export async function POST(request: NextRequest) {
             console.error('[Order] Failed to send email notification:', emailError)
         }
 
-        // Trigger auto-fulfillment (async)
-        triggerFulfillment((order as any).id, (pkg as any).network)
-
         return NextResponse.json({
             success: true,
             order: {
@@ -311,14 +308,4 @@ async function updateCustomerPurchases(
             last_purchase_at: new Date().toISOString(),
         })
     }
-}
-
-async function triggerFulfillment(orderId: string, network: string) {
-    // This would be called asynchronously to trigger the fulfillment service
-    // For now, we'll just log it and rely on the cron job
-    console.log(`Triggering fulfillment for order ${orderId} on ${network}`)
-
-    // In production, you'd call:
-    // - MTN API for MTN orders
-    // - CodeCraft API for Telecel, AT-iShare, AT-BigTime orders
 }

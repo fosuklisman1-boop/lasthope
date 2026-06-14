@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -203,7 +203,6 @@ export type Database = {
         Row: {
           amount: number
           bundle_name: string | null
-          channel: string
           cost_price: number | null
           created_at: string | null
           customer_phone: string | null
@@ -231,7 +230,6 @@ export type Database = {
         Insert: {
           amount: number
           bundle_name?: string | null
-          channel?: string
           cost_price?: number | null
           created_at?: string | null
           customer_phone?: string | null
@@ -259,7 +257,6 @@ export type Database = {
         Update: {
           amount?: number
           bundle_name?: string | null
-          channel?: string
           cost_price?: number | null
           created_at?: string | null
           customer_phone?: string | null
@@ -393,10 +390,6 @@ export type Database = {
           theme_color: string | null
           updated_at: string | null
           user_id: string
-          ussd_callback_token: string | null
-          ussd_code: string | null
-          ussd_credits: number
-          ussd_enabled: boolean
         }
         Insert: {
           created_at?: string | null
@@ -409,10 +402,6 @@ export type Database = {
           theme_color?: string | null
           updated_at?: string | null
           user_id: string
-          ussd_callback_token?: string | null
-          ussd_code?: string | null
-          ussd_credits?: number
-          ussd_enabled?: boolean
         }
         Update: {
           created_at?: string | null
@@ -425,10 +414,6 @@ export type Database = {
           theme_color?: string | null
           updated_at?: string | null
           user_id?: string
-          ussd_callback_token?: string | null
-          ussd_code?: string | null
-          ussd_credits?: number
-          ussd_enabled?: boolean
         }
         Relationships: []
       }
@@ -497,82 +482,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
-      }
-      ussd_credit_purchases: {
-        Row: {
-          amount: number
-          created_at: string
-          id: string
-          reference: string
-          sessions: number
-          shop_id: string
-          status: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          id?: string
-          reference: string
-          sessions: number
-          shop_id: string
-          status?: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          id?: string
-          reference?: string
-          sessions?: number
-          shop_id?: string
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ussd_credit_purchases_shop_id_fkey"
-            columns: ["shop_id"]
-            isOneToOne: false
-            referencedRelation: "shops"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ussd_sessions: {
-        Row: {
-          created_at: string
-          data: Json
-          msisdn: string
-          session_id: string
-          shop_id: string
-          step: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          data?: Json
-          msisdn: string
-          session_id: string
-          shop_id: string
-          step: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          data?: Json
-          msisdn?: string
-          session_id?: string
-          shop_id?: string
-          step?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ussd_sessions_shop_id_fkey"
-            columns: ["shop_id"]
-            isOneToOne: false
-            referencedRelation: "shops"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       wallet_payments: {
         Row: {
@@ -797,19 +706,6 @@ export type Database = {
           total_credited: number
           total_spent: number
           user_id: string
-        }[]
-      }
-      decrement_ussd_credits: {
-        Args: { p_shop_id: string }
-        Returns: {
-          ussd_credits: number
-        }[]
-      }
-      increment_ussd_credits: {
-        Args: { p_sessions: number; p_shop_id: string }
-        Returns: {
-          user_id: string
-          ussd_credits: number
         }[]
       }
       refund_wallet: {

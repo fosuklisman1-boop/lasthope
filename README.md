@@ -68,6 +68,4 @@ By default, new users are standard users. To make yourself an admin:
 
 The platform uses API routes for cron jobs (in `app/api/cron/`). Deploying to Vercel will automatically configure these if you set up the `CRON_SECRET` environment variable.
 
-- `sync-mtn-status`: Updates MTN order statuses.
-- `sync-codecraft-status`: Updates Telecel/AT order statuses.
 - `verify-pending-payments`: Checks for abandoned/pending Paystack transactions.

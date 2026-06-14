@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
-import { fulfillMTNOrder } from '@/lib/mtn-fulfillment'
-import { fulfillOrder as fulfillOtherOrder } from '@/lib/at-ishare-service'
 import { calculatePaystackFee } from '@/lib/utils'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
@@ -77,39 +75,11 @@ export async function GET(request: NextRequest) {
             })
             .eq('id', order.id)
 
-        // 5. Trigger Fulfillment (Async)
-        triggerGuestFulfillment(order.id, order.network!, order.phone_number, order.size!)
-
-        // 6. Redirect to new guest order summary page
+        // 5. Redirect to guest order summary page (fulfillment handled manually)
         return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/s/order/${reference}?success=true`)
 
     } catch (error) {
         console.error('[GuestVerify] Exception:', error)
         return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=verification_failed`)
-    }
-}
-
-async function triggerGuestFulfillment(orderId: string, network: string, phoneNumber: string, size: string) {
-    const supabase = createServerClient() // Uses service role by default in my lib/supabase if configured
-
-    try {
-        let result;
-        if (network === 'MTN') {
-            result = await fulfillMTNOrder(phoneNumber, size, orderId)
-        } else {
-            result = await fulfillOtherOrder(phoneNumber, size, network)
-        }
-
-        if (result.success) {
-            await supabase
-                .from('orders')
-                .update({
-                    status: 'processing',
-                    provider_ref: (result as any).reference || (result as any).reference_id
-                })
-                .eq('id', orderId)
-        }
-    } catch (err) {
-        console.error('[GuestFulfillment] Error:', err)
     }
 }
