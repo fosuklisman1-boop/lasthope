@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
+import { RESELLER_TIERS } from '@/lib/roles'
 
 export async function GET(request: NextRequest) {
     try {
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
                 created_at,
                 updated_at
             `)
-            .eq('role', 'agent')
+            .in('role', RESELLER_TIERS)
             .order('created_at', { ascending: false })
 
         const { data: agents, error: fetchError } = await Promise.race([
