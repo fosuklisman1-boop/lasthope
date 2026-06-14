@@ -17,6 +17,7 @@ import { Loader2, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/auth-context'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { isResellerRole } from '@/lib/roles'
 
 export default function AFAOrdersPage() {
     const { dbUser } = useAuth()
@@ -56,7 +57,7 @@ export default function AFAOrdersPage() {
             }, {})
 
             const userRole = dbUser?.role || 'user'
-            const price = userRole === 'agent'
+            const price = isResellerRole(userRole)
                 ? parseFloat(settings?.afa_price_agent || '10')
                 : parseFloat(settings?.afa_price_customer || '10')
 
