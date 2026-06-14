@@ -45,7 +45,7 @@ validateSMSConfig()
  */
 export async function sendSMS(options: SMSOptions): Promise<SMSResult> {
     const apiKey = process.env.MOOLRE_API_KEY
-    const defaultSender = process.env.MOOLRE_SENDER_ID || 'GHDATA'
+    const defaultSender = process.env.MOOLRE_SENDER_ID || 'LASTHOPE'
 
     // Strict validation - no fallback
     if (!apiKey) {
@@ -191,7 +191,7 @@ export async function sendOrderSuccessSMS(
     // Updated Template: "Your order for [Data Size] has been received and is being processed. You will receive your data in less than 1hr thank you."
     const message = `Your order for ${details.size} has been received and is being processed. You will receive your data in less than 1hr thank you.
 
-MDataGH`
+LASTHOPE`
 
     return sendSMS({
         recipient: details.recipientNumber,
@@ -235,7 +235,7 @@ export async function sendWalletTopupSuccessSMS(
     // Updated Template: "Hello! You have added GH[Amount] to your Flexy-Wallet. Your Flexy-Wallet is now GH[New_Balance]"
     const message = `Hello! You have added GH${details.amount.toFixed(2)} to your Flexy-Wallet. Your Flexy-Wallet is now GH${details.newBalance.toFixed(2)}
 
-MDataGH`
+LASTHOPE`
 
     return sendSMS({
         recipient: phoneNumber,
@@ -253,7 +253,7 @@ export async function sendWelcomeSMS(
 ) {
     // DISABLED AS REQUESTED
     /*
-    const message = `Hello! Welcome to MDataGH. All we do here is instant Delivery (PA-TU-PA) start ordering your package now. Chat us on WhatsApp:578065809`
+    const message = `Hello! Welcome to LASTHOPE. All we do here is instant Delivery (PA-TU-PA) start ordering your package now. Chat us on WhatsApp:578065809`
 
     return sendSMS({
         recipient: phoneNumber,
@@ -303,7 +303,7 @@ export async function sendAgentUpgradeSuccessSMS(
 
     const message = `Congratulations! Your Agent membership has been upgraded until ${formattedDate}
 
-MDataGH`
+LASTHOPE`
 
     return sendSMS({
         recipient: phoneNumber,
@@ -330,7 +330,7 @@ export async function sendAgentExtensionSuccessSMS(
 
     const message = `Congratulations! Your Agent membership has been extended until ${formattedDate}
 
-MDataGH`
+LASTHOPE`
 
     return sendSMS({
         recipient: phoneNumber,
@@ -387,7 +387,7 @@ export async function sendAgentExpiryNotificationSMS(
 ) {
     const message = `Dear valued customer, your Agent membership has expired. You can renew your subscription anytime to continue enjoying agent benefits thank you.
 
-MDataGH`
+LASTHOPE`
 
     return sendSMS({
         recipient: phoneNumber,
@@ -409,7 +409,7 @@ export async function sendOrderRefundSMS(
 
     const message = `Your order for ${displayNumber} has been refunded due to an error. Refund was GH${refundAmount.toFixed(2)}. Your new Flexy-wallet is now GH${newBalance.toFixed(2)} thank you.
 
-MDataGH`
+LASTHOPE`
 
     return sendSMS({
         recipient: phoneNumber,

@@ -18,8 +18,8 @@ apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.
 
 // Sender configuration
 const DEFAULT_SENDER = {
-    name: process.env.BREVO_SENDER_NAME || 'MDataGH',
-    email: process.env.BREVO_SENDER_EMAIL || 'noreply@mdatagh.com'
+    name: process.env.BREVO_SENDER_NAME || 'LASTHOPE',
+    email: process.env.BREVO_SENDER_EMAIL || 'noreply@lasthope.com'
 }
 
 interface SendEmailOptions {
@@ -429,7 +429,7 @@ function generatePremiumTemplate(title: string, content: string, accentColor: st
                     <div class="logo-icon">
                         <span class="logo-text">K</span>
                     </div>
-                    <div class="brand-name">MDataGH</div>
+                    <div class="brand-name">LASTHOPE</div>
                     <div class="brand-tagline">Premium Data Solutions</div>
                 </div>
             </div>
@@ -440,14 +440,14 @@ function generatePremiumTemplate(title: string, content: string, accentColor: st
                 <div class="footer-links">
                     <a href="${process.env.NEXT_PUBLIC_APP_URL}" class="footer-link">Website</a>
                     <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" class="footer-link">Dashboard</a>
-                    <a href="mailto:support@mdatagh.com" class="footer-link">Support</a>
+                    <a href="mailto:support@lasthope.com" class="footer-link">Support</a>
                 </div>
                 <p class="footer-text">
                     Questions? Reply to this email or contact us at<br>
-                    <strong>support@mdatagh.com</strong>
+                    <strong>support@lasthope.com</strong>
                 </p>
                 <p class="footer-copyright">
-                    © ${new Date().getFullYear()} MDataGH. All rights reserved.<br>
+                    © ${new Date().getFullYear()} LASTHOPE. All rights reserved.<br>
                     Ghana's Premium Data Reseller Platform
                 </p>
             </div>
@@ -473,7 +473,7 @@ export async function sendWelcomeEmail(
         <p class="subtitle">Your premium data journey begins now</p>
         
         <p class="message-text">
-            Thank you for joining <strong>MDataGH</strong> – Ghana's most trusted 
+            Thank you for joining <strong>LASTHOPE</strong> – Ghana's most trusted 
             premium data reseller platform. Your account has been successfully created and 
             you're now part of an exclusive community.
         </p>
@@ -518,7 +518,7 @@ export async function sendWelcomeEmail(
     return sendEmail({
         to: email,
         toName: firstName,
-        subject: `Welcome to MDataGH, ${firstName}! 🎉`,
+        subject: `Welcome to LASTHOPE, ${firstName}! 🎉`,
         htmlContent: generatePremiumTemplate('Welcome', content)
     })
 }
@@ -888,7 +888,7 @@ export async function sendAdminNewComplaintAlert(
         priority: string
     }
 ): Promise<EmailResult> {
-    const adminEmail = process.env.ADMIN_EMAIL || 'support@mydatagh.com'
+    const adminEmail = process.env.ADMIN_EMAIL || 'support@lasthope.com'
 
     const content = `
         <h1 class="greeting">New Complaint Alert 🚨</h1>
@@ -969,7 +969,7 @@ export async function sendAdminNewOrderAlert(
         customerEmail: string
     }
 ): Promise<EmailResult> {
-    const adminEmail = process.env.ADMIN_EMAIL || 'support@mydatagh.com'
+    const adminEmail = process.env.ADMIN_EMAIL || 'support@lasthope.com'
 
     const content = `
         <h1 class="greeting">New Order Received! 🔔</h1>
@@ -1121,7 +1121,7 @@ export async function sendAdminNewUserAlert(
         phoneNumber: string
     }
 ): Promise<EmailResult> {
-    const adminEmail = process.env.ADMIN_EMAIL || 'support@mydatagh.com'
+    const adminEmail = process.env.ADMIN_EMAIL || 'support@lasthope.com'
 
     const content = `
         <h1 class="greeting">New User Registration! 👤</h1>

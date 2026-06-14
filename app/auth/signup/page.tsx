@@ -139,7 +139,7 @@ export default function SignupPage() {
                             <div className="w-full h-full rounded-2xl bg-slate-900 flex items-center justify-center shadow-xl">
                                 <Image
                                     src="/logo.png"
-                                    alt="MDataGH"
+                                    alt="LASTHOPE"
                                     fill
                                     className="object-contain p-1.5"
                                     priority
@@ -147,10 +147,10 @@ export default function SignupPage() {
                             </div>
                         </div>
                         <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-                            MDataGH
+                            LASTHOPE
                         </h1>
                         <p className="text-sm text-slate-600 mt-0.5">
-                            Join MDataGH
+                            Join LASTHOPE
                         </p>
                     </Link>
                 </div>

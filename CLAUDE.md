@@ -1,4 +1,4 @@
-# CLAUDE.md — GHData / MDataGH
+# CLAUDE.md — LASTHOPE / LASTHOPE
 
 Guidance for working in this repository. Read this before making changes.
 
@@ -16,8 +16,8 @@ data for MTN / Telecel / AirtelTigo numbers. Orders are fulfilled through
 third-party reseller APIs and reconciled by cron jobs.
 
 **Naming note:** the product is referred to by three names. `package.json` =
-`ghdata`, README = "GHData", the live UI brands itself **"MDataGH"**, and order
-reference codes are prefixed `GHD-`. MDataGH is the current public name.
+`lasthope`, README = "LASTHOPE", the live UI brands itself **"LASTHOPE"**, and order
+reference codes are prefixed `LASTHOPE-`. LASTHOPE is the current public name.
 
 ## 2. Tech stack
 

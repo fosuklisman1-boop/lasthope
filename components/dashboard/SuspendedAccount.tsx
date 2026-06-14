@@ -21,7 +21,7 @@ export function SuspendedAccount() {
                     </div>
 
                     <div className="space-y-2">
-                        <h1 className="text-2xl font-black text-slate-900 mb-2">MDataGH</h1>
+                        <h1 className="text-2xl font-black text-slate-900 mb-2">LASTHOPE</h1>
                         <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
                             YOUR ACCOUNT IS SUSPENDED
                         </h2>
@@ -41,7 +41,7 @@ export function SuspendedAccount() {
                     </div>
 
                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold pt-4 border-t border-slate-100 dark:border-slate-800">
-                        MDataGH Support System
+                        LASTHOPE Support System
                     </p>
                 </CardContent>
             </Card>

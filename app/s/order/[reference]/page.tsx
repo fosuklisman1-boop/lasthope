@@ -234,7 +234,7 @@ export default function OrderSummaryPage() {
                 </Card>
 
                 <p className="text-center text-[10px] text-muted-foreground uppercase tracking-widest">
-                    Powered by GHData Global
+                    Powered by LASTHOPE Global
                 </p>
             </div>
         </div>

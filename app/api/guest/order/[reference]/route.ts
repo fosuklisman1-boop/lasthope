@@ -36,7 +36,7 @@ export async function GET(
             payment_status: order.payment_status,
             phone_number: order.customer_phone || order.phone_number,
             created_at: order.created_at,
-            shop_name: order.shops?.name || 'GHData Store'
+            shop_name: order.shops?.name || 'LASTHOPE Store'
         }
 
         return NextResponse.json({ order: publicOrder })

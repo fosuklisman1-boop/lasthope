@@ -60,7 +60,7 @@ export default function LoginPage() {
                             <div className="w-full h-full rounded-2xl bg-slate-900 flex items-center justify-center shadow-xl">
                                 <Image
                                     src="/logo.png"
-                                    alt="MDataGH"
+                                    alt="LASTHOPE"
                                     fill
                                     className="object-contain p-2"
                                     priority
@@ -68,7 +68,7 @@ export default function LoginPage() {
                             </div>
                         </div>
                         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                            MDataGH
+                            LASTHOPE
                         </h1>
                         <p className="text-base text-slate-600 mt-1">
                             Sign in to continue

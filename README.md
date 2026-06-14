@@ -1,4 +1,4 @@
-# GHData - Mobile Data & Airtime Platform
+# LASTHOPE - Mobile Data & Airtime Platform
 
 A modern e-commerce platform for selling mobile data and airtime in Ghana, built with Next.js 15, Tailwind CSS, and Supabase.
 

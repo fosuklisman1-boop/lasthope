@@ -284,7 +284,7 @@ export default function StorefrontPage() {
                         <div className="mt-8 text-center space-y-4">
                             <div className="flex items-center justify-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
                                 <span>Powered by</span>
-                                <span className="text-primary tracking-tight">MDataGH</span>
+                                <span className="text-primary tracking-tight">LASTHOPE</span>
                             </div>
                             <div className="flex items-center justify-center gap-4 text-muted-foreground opacity-50 grayscale contrast-125">
                                 <span className="text-xs font-bold">MTN</span>

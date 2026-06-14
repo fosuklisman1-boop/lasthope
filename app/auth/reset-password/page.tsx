@@ -52,7 +52,7 @@ export default function ResetPasswordPage() {
                     <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-2xl mb-4 transform hover:rotate-6 transition-transform">
                         <Activity className="w-10 h-10 text-white" />
                     </div>
-                    <h1 className="text-3xl font-black text-slate-900 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600">MDataGH</h1>
+                    <h1 className="text-3xl font-black text-slate-900 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600">LASTHOPE</h1>
                     <p className="text-slate-500 font-medium">No worries! We'll help you get back in.</p>
                 </div>
 

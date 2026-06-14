@@ -138,7 +138,7 @@ export function DashboardSidebar() {
                         <div className="relative w-10 h-10 flex-shrink-0 transition-transform group-hover:scale-110">
                             <Image
                                 src="/logo.png"
-                                alt="MDataGH"
+                                alt="LASTHOPE"
                                 fill
                                 className="object-contain"
                                 priority
@@ -150,7 +150,7 @@ export function DashboardSidebar() {
                         {!isCollapsed && (
                             <div className="flex flex-col transition-transform group-hover:scale-105">
                                 <span className="text-xl font-extrabold tracking-tight text-black dark:text-white font-display drop-shadow-sm">
-                                    MDataGH
+                                    LASTHOPE
                                 </span>
                                 <span className="text-[11px] font-bold text-[#E60000] -mt-1 tracking-widest drop-shadow-sm">PREMIUM DATA</span>
                             </div>

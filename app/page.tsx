@@ -48,13 +48,13 @@ export default function HomePage() {
                                 <div className="relative w-24 h-24 mb-2 drop-shadow-lg lg:drop-shadow-2xl">
                                     <Image
                                         src="/logo.png"
-                                        alt="MDataGH Logo"
+                                        alt="LASTHOPE Logo"
                                         fill
                                         className="object-contain"
                                         priority
                                     />
                                 </div>
-                                <h1 className="text-3xl font-black text-slate-900 tracking-tight drop-shadow-sm">MDataGH</h1>
+                                <h1 className="text-3xl font-black text-slate-900 tracking-tight drop-shadow-sm">LASTHOPE</h1>
                             </div>
 
                             <div className="flex flex-col items-center space-y-2">
@@ -134,7 +134,7 @@ export default function HomePage() {
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16">
                         <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-                            Why Choose MDataGH?
+                            Why Choose LASTHOPE?
                         </h2>
                         <p className="text-slate-600 max-w-xl mx-auto">
                             Experience the fastest and most reliable way to purchase mobile data bundles in Ghana
@@ -237,7 +237,7 @@ export default function HomePage() {
                                 Ready to Get Started?
                             </h2>
                             <p className="text-white/90 max-w-xl mx-auto mb-8">
-                                Join thousands of Ghanaians who trust MDataGH for their mobile data bundle needs.
+                                Join thousands of Ghanaians who trust LASTHOPE for their mobile data bundle needs.
                             </p>
                             <Link href="/auth/signup">
                                 <Button size="xl" className="bg-white text-[#0056B3] hover:bg-white/90 text-lg px-8 font-bold shadow-lg">
@@ -254,7 +254,7 @@ export default function HomePage() {
             <section className="py-12 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-4xl mx-auto">
                     <div className="text-center mb-8">
-                        <h3 className="font-bold text-lg mb-4">MDataGH</h3>
+                        <h3 className="font-bold text-lg mb-4">LASTHOPE</h3>
                         <p className="text-gray-400 text-sm">
                             Ghana's most reliable platform for affordable data bundles. Trusted by thousands of users.
                         </p>
@@ -271,10 +271,10 @@ export default function HomePage() {
                             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0056B3] to-[#00B4D8] flex items-center justify-center">
                                 <Wifi className="w-4 h-4 text-white" />
                             </div>
-                            <span className="text-lg font-semibold text-slate-900">MDataGH</span>
+                            <span className="text-lg font-semibold text-slate-900">LASTHOPE</span>
                         </div>
                         <p className="text-slate-500 text-sm">
-                            © 2026 MDataGH. All rights reserved.
+                            © 2026 LASTHOPE. All rights reserved.
                         </p>
                     </div>
                 </div>

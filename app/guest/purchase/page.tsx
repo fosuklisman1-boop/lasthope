@@ -189,7 +189,7 @@ function GuestPurchaseContent() {
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
                     <Link href="/" className="flex items-center space-x-2">
                         <ArrowLeft className="w-5 h-5 text-slate-500" />
-                        <span className="font-bold text-xl text-[#0056B3]">MDataGH</span>
+                        <span className="font-bold text-xl text-[#0056B3]">LASTHOPE</span>
                     </Link>
                     <div className="flex items-center space-x-4">
                         <Link href="/auth/login">

@@ -23,7 +23,7 @@ export function formatDate(date: string | Date): string {
 export function generateReferenceCode(): string {
     const timestamp = Date.now().toString(36).toUpperCase()
     const random = Math.random().toString(36).substring(2, 8).toUpperCase()
-    return `GHD-${timestamp}-${random}`
+    return `LASTHOPE-${timestamp}-${random}`
 }
 
 export function getNetworkColor(network: string): string {

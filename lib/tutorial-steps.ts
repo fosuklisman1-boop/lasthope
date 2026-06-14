@@ -53,7 +53,7 @@ export function getDashboardTutorialSteps(userRole: UserRole): DriveStep[] {
     // Welcome
     {
       popover: {
-        title: userRole === 'agent' ? '👋 Welcome Agent!' : '👋 Welcome to MDataGH!',
+        title: userRole === 'agent' ? '👋 Welcome Agent!' : '👋 Welcome to LASTHOPE!',
         description: `
           <div>
             <p>${userRole === 'agent' ? 'Welcome to your Agent Dashboard! Let\'s explore the features available to you.' : 'Let\'s take a quick tour of your dashboard and learn how to use the platform.'}</p>
@@ -166,7 +166,7 @@ export function getOrderHistoryTutorialSteps(): DriveStep[] {
     {
       element: '.logo-container',
       popover: {
-        title: '👋 Welcome to MDataGH!',
+        title: '👋 Welcome to LASTHOPE!',
         description: 'Let us show you around.',
       }
     },

@@ -1,4 +1,4 @@
-# Security Remediation Plan — GHData / MDataGH
+# Security Remediation Plan — LASTHOPE / LASTHOPE
 
 Audit date: 2026-06-13. Scope: full codebase static review (auth, payments,
 roles, secrets, data exposure), plus a live Supabase advisor scan once DB

@@ -20,12 +20,12 @@ const firaSans = Fira_Sans({
 })
 
 export const metadata: Metadata = {
-    title: 'MDataGH - Buy Cheap Data Bundles Online',
-    description: 'MDataGH is the most reliable platform to buy cheap data bundles for MTN, Telecel, and AT in Ghana.',
+    title: 'LASTHOPE - Buy Cheap Data Bundles Online',
+    description: 'LASTHOPE is the most reliable platform to buy cheap data bundles for MTN, Telecel, and AT in Ghana.',
     keywords: ['Ghana', 'mobile data', 'airtime', 'MTN', 'Telecel', 'AirtelTigo', 'data bundles'],
-    authors: [{ name: 'MDataGH' }],
+    authors: [{ name: 'LASTHOPE' }],
     openGraph: {
-        title: 'MDataGH - Mobile Data & Airtime Platform',
+        title: 'LASTHOPE - Mobile Data & Airtime Platform',
         description: 'Purchase data packages for all Ghanaian networks',
         type: 'website',
     },

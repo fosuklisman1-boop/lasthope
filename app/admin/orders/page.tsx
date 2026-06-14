@@ -454,7 +454,7 @@ export default function AdminOrdersPage() {
             }
 
             // Get the filename from the backend response (includes admin name)
-            const fileName = result.filename || `ghdata_orders_${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`
+            const fileName = result.filename || `lasthope_orders_${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`
 
             // 3. Perform export - CUSTOM FORMAT (Beneficiary Msisdn / GIGGS)
             const rows: any[][] = []
@@ -640,7 +640,7 @@ export default function AdminOrdersPage() {
                 return
             }
 
-            const prefix = exportMode === 'standard' ? 'ghdata_merged' : `ghdata_${exportMode}`
+            const prefix = exportMode === 'standard' ? 'lasthope_merged' : `lasthope_${exportMode}`
             const filename = `${prefix}_${historyFilter}_${new Date().toISOString().substring(0, 10)}.xlsx`
 
             await generateExcelFile(allOrders, filename, exportMode)
@@ -747,7 +747,7 @@ export default function AdminOrdersPage() {
                         </CardTitle>
                         <div className="flex gap-2 mt-1">
                             <Badge variant="outline" className="w-fit">{displayNetwork}</Badge>
-                            {batch.filename.includes('ghdata_') && !batch.filename.includes('ghdata_orders_') && (
+                            {batch.filename.includes('lasthope_') && !batch.filename.includes('lasthope_orders_') && (
                                 <Badge variant="secondary" className="w-fit text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200">
                                     Only {batch.filename.split('_')[1]}
                                 </Badge>
