@@ -40,6 +40,9 @@ export interface DataPackage {
     size: string
     price: number
     agent_price?: number
+    super_agent_price?: number
+    premium_agent_price?: number
+    dealer_price?: number
     cost_price?: number
     description?: string
     is_available: boolean
