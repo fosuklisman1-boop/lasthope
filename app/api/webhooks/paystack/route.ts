@@ -35,10 +35,10 @@ export async function POST(request: NextRequest) {
             const metadata = event.data.metadata
             console.log(`[PaystackWebhook] Detected Metadata for ${reference}:`, metadata)
 
-            const isUpgrade = metadata?.upgrade_type === 'agent' || reference.startsWith('agent_upgrade_')
+            const isUpgrade = metadata?.target_role || reference.startsWith('upgrade_') || metadata?.upgrade_type === 'agent' || reference.startsWith('agent_upgrade_')
 
             if (isUpgrade) {
-                console.log(`[PaystackWebhook] Identifying as AGENT UPGRADE (via ${metadata?.upgrade_type === 'agent' ? 'metadata' : 'reference prefix'})`)
+                console.log(`[PaystackWebhook] Routing to Upgrade Process for ref: ${reference}`)
                 const { processCompletedUpgradePayment } = await import('@/lib/payments')
                 const result = await processCompletedUpgradePayment(reference, event.data)
 

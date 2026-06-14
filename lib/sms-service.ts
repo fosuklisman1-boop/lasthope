@@ -312,6 +312,24 @@ LASTHOPE`
 }
 
 /**
+ * Send permanent role upgrade success SMS
+ * Used for multi-tier upgrade payments (target_role / upgrade_ prefix).
+ * No expiry date — the upgrade is permanent.
+ */
+export async function sendRoleUpgradeSuccessSMS(
+    phoneNumber: string,
+    firstName: string,
+    tierLabel: string
+) {
+    const message = `Congratulations ${firstName}! Your LASTHOPE account has been permanently upgraded to ${tierLabel}. You now enjoy ${tierLabel} pricing.\n\nLASTHOPE`
+
+    return sendSMS({
+        recipient: phoneNumber,
+        message
+    })
+}
+
+/**
  * Send Agent Extend/Renewal Success SMS
  * Template: "Congratulations! Your Agent membership has been extended until [Formatted_Date]"
  */

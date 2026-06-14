@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
             console.error('[PaymentVerify] Paystack verification failed:', paystackData)
 
             // Intelligent redirect based on reference
-            const isUpgrade = reference.startsWith('agent_upgrade_')
+            const isUpgrade = reference.startsWith('upgrade_') || reference.startsWith('agent_upgrade_')
             const errorUrl = isUpgrade
                 ? `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/upgrade?error=payment_failed`
                 : `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet?error=payment_failed`
@@ -54,11 +54,11 @@ export async function GET(request: NextRequest) {
             return NextResponse.redirect(errorUrl)
         }
 
-        // Check for agent upgrade in metadata OR reference prefix
-        const isUpgrade = paystackData.data.metadata?.upgrade_type === 'agent' || reference.startsWith('agent_upgrade_')
+        // Check for upgrade in metadata OR reference prefix (new pattern: target_role/upgrade_, legacy: upgrade_type/agent_upgrade_)
+        const isUpgrade = paystackData.data.metadata?.target_role || reference.startsWith('upgrade_') || paystackData.data.metadata?.upgrade_type === 'agent' || reference.startsWith('agent_upgrade_')
 
         if (isUpgrade) {
-            console.log(`[PaymentVerify] Identified as AGENT UPGRADE (via ${paystackData.data.metadata?.upgrade_type === 'agent' ? 'metadata' : 'reference prefix'})`)
+            console.log(`[PaymentVerify] Routing to Upgrade Process for ref: ${reference}`)
             const { processCompletedUpgradePayment } = await import('@/lib/payments')
             const result = await processCompletedUpgradePayment(reference, paystackData.data)
 

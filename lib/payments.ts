@@ -1,7 +1,8 @@
 import { createServerClient } from './supabase'
 import { sendWalletTopupSuccessEmail } from './email-service'
-import { sendWalletTopupSuccessSMS, sendAgentUpgradeSuccessSMS } from './sms-service'
+import { sendWalletTopupSuccessSMS, sendRoleUpgradeSuccessSMS } from './sms-service'
 import { calculatePaystackFee } from './utils'
+import { roleConfig } from '@/lib/roles'
 
 // All GST- guest/shop orders are initialized with this fixed Paystack fee
 // percentage (see app/api/guest/purchase/initialize/route.ts).
@@ -42,7 +43,7 @@ export async function processCompletedWalletPayment(reference: string, providerM
     // Redirect to upgrade process if this is actually a role upgrade
     const isUpgrade = !!payment.metadata?.target_role || reference.startsWith('upgrade_') || reference.startsWith('agent_upgrade_')
     if (isUpgrade) {
-        console.log(`[PaymentProcess] Redirecting to Upgrade Process for ref: ${reference} (via ${payment.metadata?.upgrade_type === 'agent' ? 'metadata' : 'reference prefix'})`)
+        console.log('[PaymentProcess] Routing to Upgrade Process for ref:', reference)
         return processCompletedUpgradePayment(reference, providerMetadata)
     }
 
@@ -282,11 +283,11 @@ export async function processCompletedUpgradePayment(reference: string, provider
     // 6. Send SMS notification
     try {
         if (user.phone_number) {
-            await sendAgentUpgradeSuccessSMS(
+            const tierLabel = roleConfig[targetRole as keyof typeof roleConfig]?.label || targetRole
+            await sendRoleUpgradeSuccessSMS(
                 user.phone_number,
                 user.first_name || 'Member',
-                targetRole,
-                0,
+                tierLabel,
             )
         }
     } catch (smsError) {
