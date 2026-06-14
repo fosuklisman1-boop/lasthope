@@ -24,3 +24,6 @@ yarn-error.log*
 .vscode
 coverage
 .turbo
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
