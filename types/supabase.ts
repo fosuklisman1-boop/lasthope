@@ -96,7 +96,7 @@ export interface User {
     first_name: string
     last_name: string
     phone_number: string
-    role: 'admin' | 'sub-admin' | 'agent' | 'user'
+    role: 'admin' | 'sub-admin' | 'agent' | 'super-agent' | 'premium-agent' | 'dealer' | 'user'
     status: 'active' | 'suspended' | 'inactive'
     created_at: string
     updated_at: string
