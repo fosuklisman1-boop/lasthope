@@ -1,4 +1,4 @@
-# CLAUDE.md — LASTHOPE / LASTHOPE
+# CLAUDE.md — LASTHOPE
 
 Guidance for working in this repository. Read this before making changes.
 
@@ -12,12 +12,12 @@ Guidance for working in this repository. Read this before making changes.
 
 A **Next.js 15 (App Router) e-commerce platform for selling mobile data bundles
 and airtime in Ghana**. Customers fund a wallet via Paystack, then spend it on
-data for MTN / Telecel / AirtelTigo numbers. Orders are fulfilled through
-third-party reseller APIs and reconciled by cron jobs.
+data for MTN / Telecel / AirtelTigo numbers. Orders are recorded as `paid` /
+`pending` and fulfilled **manually by an admin** — the automated MTN/CodeCraft
+reseller-API fulfillment was removed for this client (see §6).
 
-**Naming note:** the product is referred to by three names. `package.json` =
-`lasthope`, README = "LASTHOPE", the live UI brands itself **"LASTHOPE"**, and order
-reference codes are prefixed `LASTHOPE-`. LASTHOPE is the current public name.
+**Naming:** branded **LASTHOPE** throughout (`package.json` = `lasthope`); order
+reference codes are prefixed `LASTHOPE-`.
 
 ## 2. Tech stack
 
@@ -27,12 +27,13 @@ reference codes are prefixed `LASTHOPE-`. LASTHOPE is the current public name.
 | DB + Auth    | Supabase (Postgres + Supabase Auth, cookie sessions) |
 | Styling      | Tailwind + shadcn/ui (Radix primitives in `components/ui/`) |
 | Payments     | Paystack (initialize → redirect → webhook + verify callback) |
-| Fulfillment  | MTN API (`lib/mtn-fulfillment.ts`) + CodeCraft API (`lib/at-ishare-service.ts`) |
+| Fulfillment  | **Manual** (admin-handled; automated MTN/CodeCraft fulfillment removed for this client) |
 | Email        | Brevo (`lib/email-service.ts`) |
 | SMS          | Moolre (`lib/sms-service.ts`) |
 | Hosting      | Vercel (crons + security headers in `vercel.json`) |
 
-Scripts: `npm run dev` / `build` / `start` / `lint`. No test suite exists.
+Scripts: `npm run dev` / `build` / `start` / `lint` / `test`. Vitest (`npm test`)
+covers `lib/` pure logic (roles, pricing); there are no integration tests.
 
 ## 3. The three Supabase clients (read this before any data code)
 
@@ -68,18 +69,31 @@ currently do not (see the remediation plan).
 
 ## 4. Roles & access control
 
-Roles: `admin`, `sub-admin`, `agent`, `user` (`lib/roles.ts`; `'user'` displays
-as "Customer" in the UI). **`agent`** is the paid tier — customers pay (3 / 14 /
-30-day plans) to become agents, gaining discounted `agent_price` pricing and a
-public storefront. Expiry lives in `users.agent_expires_at`.
+Roles (`lib/roles.ts` — the single source of truth): `admin`, `sub-admin`, the
+four **reseller tiers** `agent` → `super-agent` → `premium-agent` → `dealer`
+(progressively cheaper buying prices), then `user` (displays as "Customer").
+`lib/roles.ts` exports `RESELLER_TIERS`, `isResellerRole()`, `roleConfig`, and
+`TIER_PRICE_FIELD` (tier → `data_packages` price column).
+
+**Reseller upgrades are permanent, one-time purchases** (no expiry, no plans). A
+user buys a tier via `POST /api/user/upgrade/initialize` (`{ tier }`; price from
+`admin_settings.upgrade_price_<tier>`), or an admin assigns it via
+`/api/admin/users/role`. Every reseller tier unlocks the storefront perk. There
+is **no** `agent_expires_at`, renewal cron, or auto-downgrade — all removed when
+the model became permanent (use `isResellerRole(role)`, not `role === 'agent'`).
+
+Per-tier pricing: each `data_packages` row has base `price` plus `agent_price` /
+`super_agent_price` / `premium_agent_price` / `dealer_price`. **Always resolve
+the charge with `getPriceForRole(pkg, role)` (`lib/pricing.ts`)** — used by both
+the client buy page and the server `orders/purchase` route so a tier can't be
+billed the wrong price (falls back to base `price` when a tier price is 0/unset).
 
 Three enforcement layers:
 - **`middleware.ts`** — edge gate for pages. Session required for `/dashboard`;
   `admin`/`sub-admin` role (DB lookup) for `/admin`. Wraps Supabase calls in
   `Promise.race` timeouts and forces `no-cache` headers.
 - **`contexts/auth-context.tsx`** — client session state, retry-with-backoff DB
-  user fetch, 1-hour inactivity auto-logout, and **auto-downgrade of expired
-  agents** (POST `/api/agent/downgrade`, which sets `role: 'user'`).
+  user fetch, 1-hour inactivity auto-logout.
 - **`hooks/use-page-access.ts`** — admins toggle individual customer pages
   on/off via `admin_settings`; the sidebar filters nav accordingly.
 
@@ -94,14 +108,15 @@ metadata.
 2. Paystack → `webhooks/paystack` (HMAC-SHA512 verified) **or**
    `GET /api/payments/verify` callback → `processCompletedWalletPayment`
    (`lib/payments.ts`) credits the wallet **idempotently**.
-3. `POST /api/orders/purchase` checks balance, debits wallet, creates the
-   order, fires notifications/email/SMS, then calls (a stubbed) fulfillment.
+3. `POST /api/orders/purchase` checks balance, debits wallet (charge =
+   `getPriceForRole(pkg, role)`), creates the order, fires
+   notifications/email/SMS. The order is left `pending` for manual fulfillment.
 
 **Flow B — Direct purchase (no wallet):** guest storefront `/s/[slug]` and
 agent shops pay Paystack per-order (`GST-` ref).
 
 **Webhook routing** (`app/api/webhooks/paystack/route.ts`):
-- `metadata.upgrade_type==='agent'` / `agent_upgrade_` → `processCompletedUpgradePayment` (extends membership)
+- `metadata.target_role` / `upgrade_` prefix → `processCompletedUpgradePayment` (sets the role permanently)
 - `GST-` prefix → `processCompletedShopOrder`
 - else → `processCompletedWalletPayment`
 
@@ -112,28 +127,18 @@ against duplicate webhook deliveries.
 > ⚠️ Wallet credit/debit is **read-then-write, not atomic.** Concurrent
 > operations can race (double-spend / lost credit). See remediation plan §M1.
 
-## 6. Fulfillment — the key surprise
+## 6. Fulfillment — manual
 
-Orders are **not** fulfilled at purchase time. In `orders/purchase`,
-`triggerFulfillment()` is a **no-op stub** that only `console.log`s. The real
-work is **pull-based** via cron:
+Automated fulfillment was **removed for this client.** Orders are created with
+`status: 'pending'` / `payment_status: 'paid'` and are fulfilled **manually by an
+admin** (e.g. via the admin orders page). There is no `triggerFulfillment`, no
+MTN/CodeCraft provider code (`lib/mtn-fulfillment.ts` / `lib/at-ishare-service.ts`
+deleted), and no `sync-mtn-status` / `sync-codecraft-status` cron routes.
 
-- `app/api/cron/sync-mtn-status` and `sync-codecraft-status` poll provider
-  status, update orders + `fulfillment_logs`/`mtn_fulfillment_tracking`, and
-  **auto-refund the wallet on failure**. ⚠️ Both tables are missing from the
-  live schema (§7) — these crons' initial `.select('*, <table>(*)')` queries
-  may be erroring outright, needs runtime verification.
-- MTN calls go through a hand-rolled **circuit breaker** (opens after 5
-  failures, 1-min recovery) in `lib/mtn-fulfillment.ts`.
-
-So an order sits `pending` until a cron sweep reconciles it. When tracing "where
-does the data actually get sent," the answer is the cron jobs, not the purchase
-route.
-
-Crons authenticate with `Authorization: Bearer ${CRON_SECRET}`. Only
+Remaining crons authenticate with `Authorization: Bearer ${CRON_SECRET}`. Only
 `delete-old-orders` is registered in `vercel.json`; the rest
-(status sync, `verify-pending-payments`, cleanup, agent-renewal reminders) are
-expected to be triggered by an external scheduler.
+(`verify-pending-payments`, cleanup jobs) are expected to be triggered by an
+external scheduler.
 
 ## 7. Data model
 
@@ -154,11 +159,10 @@ The 15 tables that **actually exist** (per generated types): `admin_settings`,
 (`migrations/20260320_create_shops_and_withdrawals.sql` holds the storefront
 RLS policies).
 
-> ⚠️ **Three tables are referenced in code but do NOT exist in the live
-> schema**: `phone_blacklist` (orders/purchase anti-fraud check — currently a
-> silent no-op), `fulfillment_logs`, and `mtn_fulfillment_tracking` (read/written
-> by the status-sync crons, see §6). These queries likely error silently. See
-> SECURITY-REMEDIATION-PLAN.md §L6 follow-up.
+> ⚠️ **`phone_blacklist`** is still referenced by `orders/purchase` (anti-fraud
+> check) but does NOT exist in the live schema — that query is a silent no-op.
+> (The old `fulfillment_logs` / `mtn_fulfillment_tracking` references were
+> removed along with the fulfillment code.)
 
 ## 8. Route map
 
@@ -192,11 +196,17 @@ RLS policies).
 
 - **Add/adjust a payment path** → `lib/payments.ts` + the webhook + the relevant
   `*/initialize` route. Preserve the idempotent `UPDATE … WHERE status='pending'`.
-- **Touch fulfillment** → `lib/mtn-fulfillment.ts`, `lib/at-ishare-service.ts`,
-  and the two cron sync routes (not the purchase route).
+- **Change a buying price** → set the per-tier columns on `data_packages` in
+  admin → packages; charge resolution is centralized in `getPriceForRole`
+  (`lib/pricing.ts`) — never special-case `agent_price` inline.
+- **Change upgrade prices** → `admin_settings` keys `upgrade_price_<tier>` (one
+  per reseller tier), edited on the admin memberships page via the
+  `requireAdmin`-gated `update-prices` route.
+- **Add a reseller tier / role** → extend `lib/roles.ts` (`UserRole`,
+  `roleConfig`, `RESELLER_TIERS`, `TIER_PRICE_FIELD`), add a `data_packages`
+  price column + `upgrade_price_<tier>` setting, and update the `users.role`
+  check-constraint allow-list.
 - **Add an admin API route** → copy the auth+role handshake from
   `app/api/admin/withdrawals/route.ts` (one of the correct examples).
-- **Change pricing** → `admin_settings` keys `agent_upgrade_price_{3d,14d,30d}`;
-  remember `update-prices` currently lacks auth (fix first).
 </content>
 </invoke>
