@@ -70,7 +70,7 @@ export default function DataPackagesPage() {
     const router = useRouter()
 
     // Tutorial hook
-    const userRole = dbUser?.role === 'agent' ? 'agent' : 'customer'
+    const userRole = isResellerRole(dbUser?.role) ? 'agent' : 'customer'
     const { startTutorial } = useTutorial(userRole as 'customer' | 'agent', '/data-packages')
 
     const [packages, setPackages] = useState<DataPackage[]>([])

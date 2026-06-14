@@ -34,6 +34,7 @@ import { WalletTransaction } from '@/types/supabase'
 import { usePageAccess } from '@/hooks/use-page-access'
 import { useTutorial } from '@/hooks/useTutorial'
 import { HelpButton } from '@/components/tutorial/HelpButton'
+import { isResellerRole } from '@/lib/roles'
 
 const QUICK_AMOUNTS = [50, 100, 200, 500]
 const MIN_AMOUNT = 5
@@ -53,7 +54,7 @@ function WalletContent() {
     const searchParams = useSearchParams()
 
     // Tutorial hook
-    const userRole = dbUser?.role === 'agent' ? 'agent' : 'customer'
+    const userRole = isResellerRole(dbUser?.role) ? 'agent' : 'customer'
     const { startTutorial } = useTutorial(userRole as 'customer' | 'agent', '/wallet')
 
     // Check if wallet page is accessible
@@ -109,7 +110,7 @@ function WalletContent() {
                     .single(),
 
                 // Fetch top-up transactions
-                dbUser?.role === 'agent'
+                isResellerRole(dbUser?.role)
                     ? supabase
                         .from('wallet_transactions')
                         .select('*')
@@ -228,8 +229,8 @@ function WalletContent() {
                 <HelpButton onClick={startTutorial} />
             </div>
 
-            {/* Balance Card at top for Agents */}
-            {dbUser?.role === 'agent' && (
+            {/* Balance Card at top for Resellers */}
+            {isResellerRole(dbUser?.role) && (
                 <div className="w-full">
                     <Card id="wallet-balance-card" className="overflow-hidden border-2 border-[#1A1A1A] shadow-lg">
                         <div className="bg-[#1A1A1A] p-6 text-white">
@@ -267,8 +268,8 @@ function WalletContent() {
                 </div>
             )}
 
-            {/* Agent-only Manual Top Up Instructions */}
-            {dbUser?.role === 'agent' && (
+            {/* Reseller Manual Top Up Instructions */}
+            {isResellerRole(dbUser?.role) && (
                 <Card id="quick-topup-card" className="border-2 border-gray-100 bg-white overflow-hidden shadow-xl">
                     <CardHeader className="bg-white py-4 border-b border-gray-50">
                         <div className="flex flex-col">
@@ -365,8 +366,8 @@ function WalletContent() {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className={dbUser?.role === 'agent' ? 'lg:col-span-3' : 'lg:col-span-1'}>
-                    <Card className={cn("overflow-hidden", dbUser?.role === 'agent' && "hidden")}>
+                <div className={isResellerRole(dbUser?.role) ? 'lg:col-span-3' : 'lg:col-span-1'}>
+                    <Card className={cn("overflow-hidden", isResellerRole(dbUser?.role) && "hidden")}>
                         <div className="bg-[#FACC15] p-6 text-[#1A1A1A]">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-2">
@@ -399,7 +400,7 @@ function WalletContent() {
                 </div>
 
                 {/* Top Up Card */}
-                <div id="top-up-form" className={dbUser?.role === 'agent' ? 'lg:col-span-3' : 'lg:col-span-2'}>
+                <div id="top-up-form" className={isResellerRole(dbUser?.role) ? 'lg:col-span-3' : 'lg:col-span-2'}>
                     <Card>
                         <CardHeader>
                             <div className="flex flex-col">
@@ -407,7 +408,7 @@ function WalletContent() {
                                     <Plus className="w-5 h-5 text-blue-600" />
                                     Top Up Wallet
                                 </CardTitle>
-                                {dbUser?.role === 'agent' && (
+                                {isResellerRole(dbUser?.role) && (
                                     <span className="text-xs sm:text-sm font-bold text-[#E60000] ml-7">Paystack Charges Applied</span>
                                 )}
                             </div>
@@ -523,7 +524,7 @@ function WalletContent() {
             {/* Recent Transactions */}
             <Card id="recent-activity">
                 <CardHeader>
-                    <CardTitle>{dbUser?.role === 'agent' ? 'Recent Activity' : 'Today'}</CardTitle>
+                    <CardTitle>{isResellerRole(dbUser?.role) ? 'Recent Activity' : 'Today'}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {transactions.length === 0 ? (

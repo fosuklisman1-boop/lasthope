@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { SystemAnnouncementModal } from '@/components/system-announcement-modal'
 import { useAuth } from '@/contexts/auth-context'
 import { UIProvider } from '@/contexts/ui-context'
+import { isResellerRole } from '@/lib/roles'
 import { DashboardSidebar } from '@/components/dashboard/sidebar'
 import { DashboardHeader } from '@/components/dashboard/header'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -42,7 +43,7 @@ export default function DashboardLayout({
         return null
     }
 
-    const isSuspended = dbUser?.status === 'suspended' && (dbUser?.role === 'agent' || dbUser?.role === 'user')
+    const isSuspended = dbUser?.status === 'suspended' && (isResellerRole(dbUser?.role) || dbUser?.role === 'user')
 
     if (isSuspended) {
         return (

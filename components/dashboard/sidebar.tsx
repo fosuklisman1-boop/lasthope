@@ -62,7 +62,7 @@ const adminNavItems = [
     { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
-import { roleConfig } from '@/lib/roles'
+import { roleConfig, isResellerRole } from '@/lib/roles'
 
 export function DashboardSidebar() {
     const pathname = usePathname()
@@ -112,7 +112,7 @@ export function DashboardSidebar() {
             <aside
                 className={cn(
                     "fixed left-0 top-0 z-50 h-full flex flex-col transition-all duration-300 ease-in-out",
-                    (dbUser?.role === 'agent')
+                    isResellerRole(dbUser?.role)
                         ? "bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 dark:from-yellow-900 dark:via-amber-900 dark:to-yellow-800"
                         : "bg-[#E5E7EB] dark:bg-[#000000]",
                     isCollapsed ? "w-20" : "w-80",
@@ -131,7 +131,7 @@ export function DashboardSidebar() {
                                 className="object-contain"
                                 priority
                             />
-                            {dbUser?.role === 'agent' && (
+                            {isResellerRole(dbUser?.role) && (
                                 <Crown className="absolute -top-4 -left-3 w-6 h-6 text-black fill-black -rotate-[25deg] drop-shadow-md z-10" />
                             )}
                         </div>
@@ -166,7 +166,7 @@ export function DashboardSidebar() {
                 {!isCollapsed && dbUser && (
                     <div className={cn(
                         "mx-4 mt-6 p-4 rounded-2xl border shadow-lg",
-                        dbUser?.role === 'agent'
+                        isResellerRole(dbUser?.role)
                             ? "bg-[#FFCE00] border-black/10"
                             : "bg-gradient-to-br from-gray-200/90 to-gray-300 dark:from-gray-800/90 dark:to-gray-900 border-gray-400/50 dark:border-gray-700/50"
                     )}>
@@ -215,18 +215,18 @@ export function DashboardSidebar() {
                         {/* Wallet Section */}
                         <div className={cn(
                             "flex items-center justify-between p-3 rounded-xl border backdrop-blur-md",
-                            dbUser?.role === 'agent'
+                            isResellerRole(dbUser?.role)
                                 ? "bg-[#FFCE00] border-black/10"
                                 : "bg-gray-300/60 dark:bg-black/40 border-gray-400/30 dark:border-gray-800/50"
                         )}>
                             <div>
                                 <p className={cn(
                                     "text-[10px] uppercase tracking-wider font-bold mb-0.5",
-                                    dbUser?.role === 'agent' ? "text-black" : "text-gray-600 dark:text-gray-400"
+                                    isResellerRole(dbUser?.role) ? "text-black" : "text-gray-600 dark:text-gray-400"
                                 )}>Balance</p>
                                 <p className={cn(
                                     "text-base font-black tracking-tight",
-                                    dbUser?.role === 'agent' ? "text-black" : "text-emerald-600 dark:text-emerald-400"
+                                    isResellerRole(dbUser?.role) ? "text-black" : "text-emerald-600 dark:text-emerald-400"
                                 )}>{formatCurrency(walletBalance)}</p>
                             </div>
                             {!(process.env.NEXT_PUBLIC_PAYMENT_MAINTENANCE_MODE === 'true' && !isAdmin) && isPageAccessible('/dashboard/wallet') && (
@@ -272,10 +272,10 @@ export function DashboardSidebar() {
                                         className={cn(
                                             "flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-200",
                                             isActive
-                                                ? dbUser?.role === 'agent'
+                                                ? isResellerRole(dbUser?.role)
                                                     ? "bg-black text-[#FFCE00] shadow-lg"
                                                     : "bg-yellow-500/20 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
-                                                : dbUser?.role === 'agent'
+                                                : isResellerRole(dbUser?.role)
                                                     ? "text-black hover:text-[#FFCE00] hover:bg-black/10"
                                                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-300/60 dark:hover:bg-gray-800/60 hover:text-gray-900 dark:hover:text-gray-200",
                                             isCollapsed && "justify-center px-2"
@@ -283,7 +283,7 @@ export function DashboardSidebar() {
                                     >
                                         <item.icon className={cn(
                                             "w-5 h-5 flex-shrink-0",
-                                            isActive && (dbUser?.role === 'agent' ? "text-[#FFCE00]" : "text-yellow-600 dark:text-yellow-400")
+                                            isActive && (isResellerRole(dbUser?.role) ? "text-[#FFCE00]" : "text-yellow-600 dark:text-yellow-400")
                                         )} />
                                         {!isCollapsed && <span className="text-base font-medium">{item.label}</span>}
                                     </div>

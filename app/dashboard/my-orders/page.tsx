@@ -38,6 +38,7 @@ import { Order, DataPackage, Complaint } from '@/types/supabase'
 import { format, differenceInHours } from 'date-fns'
 import { useTutorial } from '@/hooks/useTutorial'
 import { HelpButton } from '@/components/tutorial/HelpButton'
+import { isResellerRole } from '@/lib/roles'
 
 interface OrderWithComplaints extends Order {
     complaints?: Complaint[]
@@ -52,7 +53,7 @@ export default function MyOrdersPage() {
     const [orders, setOrders] = useState<OrderWithComplaints[]>([])
 
     // Tutorial hook
-    const userRole = dbUser?.role === 'agent' ? 'agent' : 'customer'
+    const userRole = isResellerRole(dbUser?.role) ? 'agent' : 'customer'
     const { startTutorial } = useTutorial(userRole as 'customer' | 'agent', '/orders')
     const [isLoading, setIsLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')

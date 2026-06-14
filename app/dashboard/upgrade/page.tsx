@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { supabase } from '@/lib/supabase'
-import { RESELLER_TIERS, roleConfig, UserRole } from '@/lib/roles'
+import { RESELLER_TIERS, roleConfig, UserRole, isResellerRole } from '@/lib/roles'
 import { Button } from '@/components/ui/button'
 import { Crown, Zap, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -65,7 +65,7 @@ export default function UpgradePage() {
     const searchParams = useSearchParams()
 
     // Tutorial hook
-    const userRole = dbUser?.role === 'agent' ? 'agent' : 'customer'
+    const userRole = isResellerRole(dbUser?.role) ? 'agent' : 'customer'
     const { startTutorial } = useTutorial(userRole as 'customer' | 'agent', '/upgrade')
 
     // Congrats modal state

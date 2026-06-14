@@ -11,6 +11,7 @@ import { MessageSquare, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide
 import { Complaint } from '@/types/supabase'
 import { useTutorial } from '@/hooks/useTutorial'
 import { HelpButton } from '@/components/tutorial/HelpButton'
+import { isResellerRole } from '@/lib/roles'
 
 interface ComplaintWithOrder extends Complaint {
     orders?: {
@@ -27,7 +28,7 @@ export default function ComplaintsPage() {
     const { dbUser, isLoading: isAuthLoading } = useAuth()
 
     // Tutorial hook
-    const userRole = dbUser?.role === 'agent' ? 'agent' : 'customer'
+    const userRole = isResellerRole(dbUser?.role) ? 'agent' : 'customer'
     const { startTutorial } = useTutorial(userRole as 'customer' | 'agent', '/complaints')
 
     const [complaints, setComplaints] = useState<ComplaintWithOrder[]>([])

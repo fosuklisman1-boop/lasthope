@@ -37,6 +37,7 @@ interface DashboardStats {
 
 
 import { WhatsAppCommunityButtons } from '@/components/whatsapp-community-buttons'
+import { isResellerRole } from '@/lib/roles'
 
 export default function DashboardPage() {
     const { dbUser, isLoading: isAuthLoading } = useAuth()
@@ -45,7 +46,7 @@ export default function DashboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date())
 
     // Tutorial hook - page-specific
-    const userRole = dbUser?.role === 'agent' ? 'agent' : 'customer'
+    const userRole = isResellerRole(dbUser?.role) ? 'agent' : 'customer'
     const { hasSeenTutorial, startTutorial } = useTutorial(userRole as 'customer' | 'agent', '/dashboard')
 
     // Real-time clock updater
@@ -188,8 +189,8 @@ export default function DashboardPage() {
                 <HelpButton onClick={startTutorial} />
             </div>
 
-            {/* Golden Greeting Box - Agent Only */}
-            {dbUser?.role === 'agent' && (
+            {/* Golden Greeting Box - Reseller Only */}
+            {isResellerRole(dbUser?.role) && (
                 <div className="bg-[#FFCE00] rounded-2xl p-4 sm:p-6 border-2 border-yellow-600/30 shadow-md lg:shadow-xl">
                     {/* Greeting and Date/Time Row */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">

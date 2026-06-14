@@ -33,7 +33,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate, cn } from '@/lib/utils'
-import { roleConfig, UserRole } from '@/lib/roles'
+import { roleConfig, UserRole, isResellerRole } from '@/lib/roles'
 import { useTutorial } from '@/hooks/useTutorial'
 import { HelpButton } from '@/components/tutorial/HelpButton'
 
@@ -41,7 +41,7 @@ export default function ProfilePage() {
     const { dbUser, signOut, refreshUser } = useAuth()
 
     // Tutorial hook
-    const userRole = dbUser?.role === 'agent' ? 'agent' : 'customer'
+    const userRole = isResellerRole(dbUser?.role) ? 'agent' : 'customer'
     const { startTutorial } = useTutorial(userRole as 'customer' | 'agent', '/profile')
 
     const [isEditing, setIsEditing] = useState(false)

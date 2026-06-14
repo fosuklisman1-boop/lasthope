@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { roleConfig } from '@/lib/roles'
+import { roleConfig, isResellerRole } from '@/lib/roles'
 import { supabase } from '@/lib/supabase'
 import { Menu, Sun, Moon, Bell, User, Settings, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -54,7 +54,7 @@ export function DashboardHeader() {
     return (
         <header className={cn(
             "sticky top-0 z-40 h-16 backdrop-blur-xl border-b transition-colors duration-200",
-            dbUser?.role === 'agent'
+            isResellerRole(dbUser?.role)
                 ? "bg-gradient-to-b from-yellow-400 via-amber-500 to-amber-600 border-amber-600/20 shadow-sm"
                 : "bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-800"
         )}>
@@ -63,7 +63,7 @@ export function DashboardHeader() {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className={cn("lg:hidden", dbUser?.role === 'agent' ? "text-black hover:bg-black/10" : "")}
+                    className={cn("lg:hidden", isResellerRole(dbUser?.role) ? "text-black hover:bg-black/10" : "")}
                     onClick={toggleSidebar}
                 >
                     <Menu className="w-5 h-5" />
@@ -73,13 +73,13 @@ export function DashboardHeader() {
                 <div className="hidden lg:block">
                     <h1 className={cn(
                         "text-lg font-semibold",
-                        dbUser?.role === 'agent' ? "text-black drop-shadow-sm font-bold" : "text-gray-900 dark:text-white"
+                        isResellerRole(dbUser?.role) ? "text-black drop-shadow-sm font-bold" : "text-gray-900 dark:text-white"
                     )}>
                         Welcome back, {dbUser?.first_name || 'User'}! 👋
                     </h1>
                     <p className={cn(
                         "text-sm",
-                        dbUser?.role === 'agent' ? "text-black/80 font-medium" : "text-gray-500 dark:text-gray-400"
+                        isResellerRole(dbUser?.role) ? "text-black/80 font-medium" : "text-gray-500 dark:text-gray-400"
                     )}>
                         Here's what's happening with your account
                     </p>
@@ -103,13 +103,13 @@ export function DashboardHeader() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className={cn("relative", dbUser?.role === 'agent' ? "text-black hover:bg-black/10" : "")}
+                            className={cn("relative", isResellerRole(dbUser?.role) ? "text-black hover:bg-black/10" : "")}
                         >
-                            <Bell className={cn("w-5 h-5", dbUser?.role === 'agent' ? "text-black" : "text-gray-500 dark:text-gray-400")} />
+                            <Bell className={cn("w-5 h-5", isResellerRole(dbUser?.role) ? "text-black" : "text-gray-500 dark:text-gray-400")} />
                             {unreadCount > 0 && (
                                 <span className={cn(
                                     "absolute -top-1 -right-1 w-5 h-5 text-xs rounded-full flex items-center justify-center",
-                                    dbUser?.role === 'agent' ? "bg-black text-[#FFCE00]" : "bg-red-500 text-white"
+                                    isResellerRole(dbUser?.role) ? "bg-black text-[#FFCE00]" : "bg-red-500 text-white"
                                 )}>
                                     {unreadCount > 9 ? '9+' : unreadCount}
                                 </span>
@@ -140,11 +140,11 @@ export function DashboardHeader() {
                                     <Badge
                                         className="w-fit mt-1 text-[10px] px-1.5 py-0"
                                         style={{
-                                            backgroundColor: isAdmin ? '#E60000' : isSubAdmin ? '#FACC15' : dbUser?.role === 'agent' ? '#25D366' : '#0056B3',
+                                            backgroundColor: currentRole.color,
                                             color: isSubAdmin ? 'black' : 'white'
                                         }}
                                     >
-                                        {isAdmin ? 'Admin' : isSubAdmin ? 'Sub-Admin' : dbUser?.role === 'agent' ? 'Agent' : 'Customer'}
+                                        {currentRole.label}
                                     </Badge>
                                 </div>
                             </DropdownMenuLabel>
