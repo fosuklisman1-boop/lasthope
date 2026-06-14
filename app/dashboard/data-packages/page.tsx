@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/auth-context'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { formatCurrency, getNetworkGradient, cn } from '@/lib/utils'
+import { getPriceForRole } from '@/lib/pricing'
+import { isResellerRole } from '@/lib/roles'
 import { validateGhanaianPhone, detectNetwork } from '@/lib/phone-validation'
 import { NetworkIcon } from '@/components/network-icon'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -188,11 +190,7 @@ export default function DataPackagesPage() {
 
     // Helper function to get effective price based on user role
     const getEffectivePrice = (pkg: DataPackage) => {
-        // If user is agent AND agent_price is set (> 0), use agent_price
-        if (dbUser?.role === 'agent' && (pkg as any).agent_price > 0) {
-            return (pkg as any).agent_price
-        }
-        return pkg.price
+        return getPriceForRole(pkg as any, dbUser?.role)
     }
 
     const handlePurchaseClick = (pkg: DataPackage) => {
@@ -586,8 +584,8 @@ export default function DataPackagesPage() {
                     </div>
                 </div>
 
-                {/* Bulk Order Section - Agents Only */}
-                {dbUser?.role === 'agent' && (
+                {/* Bulk Order Section - Reseller Tiers Only */}
+                {isResellerRole(dbUser?.role) && (
                     <div id="bulk-order-section" className="w-full max-w-3xl mx-auto space-y-4">
                         {/* New Yellow Header Box */}
                         <div className="bg-[#FFCE00] rounded-3xl p-6 shadow-md lg:shadow-xl relative overflow-hidden">

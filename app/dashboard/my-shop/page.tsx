@@ -42,6 +42,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { getPriceForRole } from '@/lib/pricing'
 
 interface Shop {
     id: string
@@ -240,7 +241,7 @@ export default function MyShopPage() {
             const pkg = packages.find(p => p.id === pkgId)
             if (!pkg) return
 
-            const cost = dbUser?.role === 'agent' ? pkg.agent_price : pkg.price
+            const cost = getPriceForRole(pkg as any, dbUser?.role)
             const res = await fetch('/api/user/shop/packages', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -504,13 +505,13 @@ export default function MyShopPage() {
                                                         <div className="grid grid-cols-2 gap-2 text-sm">
                                                             <div>
                                                                 <Label className="text-[10px] uppercase opacity-60">Your Cost</Label>
-                                                                <p className="font-mono">{formatCurrency(dbUser?.role === 'agent' ? pkg.agent_price : pkg.price)}</p>
+                                                                <p className="font-mono">{formatCurrency(getPriceForRole(pkg as any, dbUser?.role))}</p>
                                                             </div>
                                                             <div>
                                                                 <Label className="text-[10px] uppercase opacity-60">Selling Price</Label>
                                                                 <PriceInput 
                                                                     pkg={pkg} 
-                                                                    cost={dbUser?.role === 'agent' ? pkg.agent_price : pkg.price}
+                                                                    cost={getPriceForRole(pkg as any, dbUser?.role)}
                                                                     onUpdate={(val) => handleUpdatePackage(pkg.id, { customPrice: val })}
                                                                 />
                                                             </div>
@@ -518,7 +519,7 @@ export default function MyShopPage() {
                                                         <div className="bg-primary/5 rounded p-2 text-center">
                                                             <Label className="text-[10px] uppercase opacity-60">Your Profit</Label>
                                                             <p className="font-bold text-emerald-600">
-                                                                {formatCurrency((pkg.shop_config.custom_price || (dbUser?.role === 'agent' ? pkg.agent_price : pkg.price)) - (dbUser?.role === 'agent' ? pkg.agent_price : pkg.price))}
+                                                                {formatCurrency((pkg.shop_config.custom_price || getPriceForRole(pkg as any, dbUser?.role)) - getPriceForRole(pkg as any, dbUser?.role))}
                                                             </p>
                                                         </div>
                                                     </CardContent>

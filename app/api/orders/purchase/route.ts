@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { generateReferenceCode } from '@/lib/utils'
+import { getPriceForRole } from '@/lib/pricing'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { sendOrderSuccessEmail, sendAdminNewOrderAlert } from '@/lib/email-service'
@@ -87,14 +88,11 @@ export async function POST(request: NextRequest) {
             .eq('id', userId)
             .single()
 
-        const isAgent = (userRoleData as any)?.role === 'agent'
+        const userRole = (userRoleData as any)?.role
+        const isAgent = userRole === 'agent'
 
-        // Determine price to charge
-        // If agent and agent_price is set (greater than 0), use agent_price.
-        // Otherwise use standard price.
-        const priceToCharge = (isAgent && (pkg as any).agent_price > 0)
-            ? (pkg as any).agent_price
-            : (pkg as any).price
+        // Determine price to charge based on user's reseller tier
+        const chargeAmount = getPriceForRole(pkg as any, userRole)
 
         // Get user's wallet
         const { data: wallet, error: walletError } = await supabase
@@ -108,7 +106,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Check balance
-        if ((wallet as any).balance < priceToCharge) {
+        if ((wallet as any).balance < chargeAmount) {
             return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 })
         }
 
@@ -124,8 +122,8 @@ export async function POST(request: NextRequest) {
                 network: (pkg as any).network,
                 size: (pkg as any).size,
                 bundle_name: (pkg as any).size, // Compatibility
-                price: priceToCharge,
-                amount: priceToCharge, // Compatibility
+                price: chargeAmount,
+                amount: chargeAmount, // Compatibility
                 cost_price: (pkg as any).cost_price || 0,
                 status: 'pending',
                 payment_status: 'paid',
@@ -149,7 +147,7 @@ export async function POST(request: NextRequest) {
 
         // Debit wallet (atomic RPC - authoritative balance check, see M1)
         const { data: debitResult, error: debitError } = await supabase
-            .rpc('debit_wallet', { p_wallet_id: (wallet as any).id, p_amount: priceToCharge })
+            .rpc('debit_wallet', { p_wallet_id: (wallet as any).id, p_amount: chargeAmount })
             .single()
 
         if (debitError || !debitResult) {
@@ -170,7 +168,7 @@ export async function POST(request: NextRequest) {
             wallet_id: (wallet as any).id,
             user_id: userId,
             type: 'debit',
-            amount: priceToCharge,
+            amount: chargeAmount,
             description: `Data purchase: ${(pkg as any).size} for ${phoneNumber}`,
             reference: referenceCode,
             source: 'purchase',
@@ -178,7 +176,7 @@ export async function POST(request: NextRequest) {
         })
 
         // Update customer purchases
-        await updateCustomerPurchases(supabase, userId!, phoneNumber, priceToCharge)
+        await updateCustomerPurchases(supabase, userId!, phoneNumber, chargeAmount)
 
         // Create notification
         await (supabase.from('notifications') as any).insert({
@@ -215,7 +213,7 @@ export async function POST(request: NextRequest) {
                             phoneNumber,
                             network: (pkg as any).network,
                             size: (pkg as any).size,
-                            price: priceToCharge
+                            price: chargeAmount
                         }
                     ).catch((err: Error) => console.error('[Order] User email error:', err))
                 }
@@ -228,7 +226,7 @@ export async function POST(request: NextRequest) {
                         {
                             network: (pkg as any).network,
                             size: (pkg as any).size,
-                            price: priceToCharge,
+                            price: chargeAmount,
                             recipientNumber: phoneNumber,
                             currentBalance: newBalance
                         }
@@ -249,7 +247,7 @@ export async function POST(request: NextRequest) {
                     phoneNumber,
                     network: (pkg as any).network,
                     size: (pkg as any).size,
-                    price: priceToCharge,
+                    price: chargeAmount,
                     customerName: `${firstName} ${lastName}`.trim(),
                     customerEmail: userEmail
                 }).catch((err: Error) => console.error('[Order] Admin email error:', err))

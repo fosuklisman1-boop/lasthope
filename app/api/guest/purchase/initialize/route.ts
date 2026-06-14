@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { calculatePaystackFee, generateReferenceCode } from '@/lib/utils'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { getPriceForRole } from '@/lib/pricing'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
 
@@ -71,9 +72,7 @@ export async function POST(request: NextRequest) {
                     const ownerRole = (owner as any)?.role || 'user'
                     console.log('[GuestPurchase] Owner role identified:', ownerRole)
 
-                    const costPrice = (ownerRole === 'agent' && (pkg.agent_price ?? 0) > 0)
-                        ? Number(pkg.agent_price)
-                        : Number(pkg.price)
+                    const costPrice = getPriceForRole(pkg as any, ownerRole)
                     
                     console.log('[GuestPurchase] Cost price for owner:', costPrice)
 
