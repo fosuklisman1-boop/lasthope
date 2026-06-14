@@ -1,6 +1,6 @@
 import { createServerClient } from './supabase'
 import { sendWalletTopupSuccessEmail } from './email-service'
-import { sendWalletTopupSuccessSMS, sendAgentUpgradeSuccessSMS, sendAgentExtensionSuccessSMS } from './sms-service'
+import { sendWalletTopupSuccessSMS, sendAgentUpgradeSuccessSMS } from './sms-service'
 import { calculatePaystackFee } from './utils'
 
 // All GST- guest/shop orders are initialized with this fixed Paystack fee
@@ -39,8 +39,8 @@ export async function processCompletedWalletPayment(reference: string, providerM
 
     console.log(`[PaymentProcess] Found payment record. Current status: ${payment.status}, Metadata:`, payment.metadata);
 
-    // Redirect to upgrade process if this is actually an agent upgrade
-    const isUpgrade = payment.metadata?.upgrade_type === 'agent' || reference.startsWith('agent_upgrade_')
+    // Redirect to upgrade process if this is actually a role upgrade
+    const isUpgrade = !!payment.metadata?.target_role || reference.startsWith('upgrade_') || reference.startsWith('agent_upgrade_')
     if (isUpgrade) {
         console.log(`[PaymentProcess] Redirecting to Upgrade Process for ref: ${reference} (via ${payment.metadata?.upgrade_type === 'agent' ? 'metadata' : 'reference prefix'})`)
         return processCompletedUpgradePayment(reference, providerMetadata)
@@ -239,10 +239,10 @@ export async function processCompletedUpgradePayment(reference: string, provider
 
     console.log(`[UpgradeProcess] Status update SUCCESSFUL. Proceeding with user upgrade...`);
 
-    // 3. Get User and current expiry
+    // 3. Get User details
     const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('role, agent_expires_at, email, first_name, phone_number')
+        .select('role, email, first_name, phone_number')
         .eq('id', payment.user_id)
         .single()
 
@@ -253,27 +253,14 @@ export async function processCompletedUpgradePayment(reference: string, provider
         return { success: false, error: 'User not found' }
     }
 
-    // 4. Calculate new expiry
-    const planDays = (payment.metadata as any)?.plan_days || 30
-    const now = new Date()
-    let currentExpiry = user.agent_expires_at ? new Date(user.agent_expires_at) : null
-    let newExpiry: Date
+    const targetRole = (payment.metadata as any)?.target_role || 'agent'
 
-    if (currentExpiry && currentExpiry > now) {
-        // Extend existing
-        newExpiry = new Date(currentExpiry.getTime() + (planDays * 24 * 60 * 60 * 1000))
-    } else {
-        // Start fresh
-        newExpiry = new Date(now.getTime() + (planDays * 24 * 60 * 60 * 1000))
-    }
-
-    // 5. Update user role and expiry (and activate account if suspended)
+    // 4. Update user role permanently (and activate account if suspended)
     const { error: updateUserError } = await (supabase
         .from('users') as any)
         .update({
-            role: 'agent',
-            status: 'active', // Ensure user is active after upgrade
-            agent_expires_at: newExpiry.toISOString(),
+            role: targetRole,
+            status: 'active',
             updated_at: new Date().toISOString(),
         })
         .eq('id', payment.user_id)
@@ -283,42 +270,24 @@ export async function processCompletedUpgradePayment(reference: string, provider
         return { success: false, error: 'Failed to update user role' }
     }
 
-    // 6. Create notification
+    // 5. Create notification
     await (supabase.from('notifications') as any).insert({
         user_id: payment.user_id,
         title: 'Upgrade Successful',
-        message: `Congratulations! Your Agent membership has been ${currentExpiry && currentExpiry > now ? 'extended' : 'activated'} until ${newExpiry.toLocaleDateString()}.`,
+        message: `Congratulations! Your membership has been upgraded to ${targetRole}.`,
         type: 'system',
         action_url: '/dashboard',
     })
 
-    // 7. Send SMS notification
+    // 6. Send SMS notification
     try {
         if (user.phone_number) {
-            const planLabelText = (payment.metadata as any)?.plan_label ||
-                (planDays === 3 ? '3 Days' : planDays === 14 ? '14 Days' : '30 Days')
-
-            // Calculate remaining days from now
-            const diffMs = newExpiry.getTime() - now.getTime()
-            const remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-
-            // Check if it was an extension (user was already agent and didn't expire)
-            if (currentExpiry && currentExpiry > now) {
-                // Extension
-                await sendAgentExtensionSuccessSMS(
-                    user.phone_number,
-                    newExpiry
-                )
-            } else {
-                // New Upgrade
-                await sendAgentUpgradeSuccessSMS(
-                    user.phone_number,
-                    user.first_name || 'Agent',
-                    planLabelText,
-                    remainingDays,
-                    newExpiry.toISOString() // Pass the expiry date
-                )
-            }
+            await sendAgentUpgradeSuccessSMS(
+                user.phone_number,
+                user.first_name || 'Member',
+                targetRole,
+                0,
+            )
         }
     } catch (smsError) {
         console.error('[UpgradeProcess] SMS error:', smsError)

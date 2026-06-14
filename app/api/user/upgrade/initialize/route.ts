@@ -1,8 +1,9 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { generateReferenceCode, calculatePaystackFee } from '@/lib/utils'
+import { generateReferenceCode } from '@/lib/utils'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { RESELLER_TIERS, isResellerRole } from '@/lib/roles'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
 
@@ -19,8 +20,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const { plan = '30d' } = await request.json().catch(() => ({}));
+        const { tier } = await request.json().catch(() => ({}));
         const user = session.user
+
+        // Validate tier
+        if (!RESELLER_TIERS.includes(tier)) {
+            return NextResponse.json({ error: 'Invalid tier' }, { status: 400 })
+        }
 
         // L4: throttle upgrade-payment initialization (payment-spam protection)
         const rateLimit = await checkRateLimit(`upgrade-init:${user.id}`, 5, 60)
@@ -31,10 +37,10 @@ export async function POST(request: Request) {
             )
         }
 
-        console.log('[UpgradeAPI] Received request for plan:', plan)
+        console.log('[UpgradeAPI] Received request for tier:', tier)
         console.log('[UpgradeAPI] User ID:', user.id)
 
-        // Check if user is already an agent or admin
+        // Check eligibility: only customers and existing reseller tiers can upgrade
         const { data: dbUser } = await supabase
             .from('users')
             .select('role')
@@ -43,15 +49,15 @@ export async function POST(request: Request) {
 
         console.log('[UpgradeAPI] DB User Role:', dbUser?.role)
 
-        if (dbUser?.role !== 'user' && dbUser?.role !== 'agent') {
+        if (!(dbUser?.role === 'user' || isResellerRole(dbUser?.role))) {
             console.error('[UpgradeAPI] Invalid role for upgrade:', dbUser?.role)
             return NextResponse.json(
-                { error: `Membership upgrades are only available for customers and existing agents. Current role: ${dbUser?.role}` },
+                { error: 'Upgrades are only available to customers and existing reseller tiers.' },
                 { status: 400 }
             )
         }
 
-        // Fetch upgrade prices from admin settings using service role to bypass RLS
+        // Fetch upgrade price from admin settings using service role to bypass RLS
         const { createClient } = await import('@supabase/supabase-js')
         const supabaseAdmin = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,37 +70,20 @@ export async function POST(request: Request) {
             }
         )
 
-        const { data: settings } = await supabaseAdmin
-            .from('admin_settings')
-            .select('key, value')
-            .in('key', ['agent_upgrade_price_3d', 'agent_upgrade_price_14d', 'agent_upgrade_price_30d'])
-
-        const getPrice = (key: string, def: number) => {
-            const s = settings?.find((s: any) => s.key === key);
-            return s ? Number(s.value) : def;
-        };
-
-        let upgradePrice = 100;
-        let planLabel = 'Agent Status';
-
-        if (plan === '3d') {
-            upgradePrice = getPrice('agent_upgrade_price_3d', 9.99);
-            planLabel = '3 Days Agent Pass';
-        } else if (plan === '14d') {
-            upgradePrice = getPrice('agent_upgrade_price_14d', 49.99);
-            planLabel = '14 Days Agent Pass';
-        } else {
-            upgradePrice = getPrice('agent_upgrade_price_30d', 99.99);
-            planLabel = '30 Days Agent Pass';
+        const settingKey = 'upgrade_price_' + tier.replace(/-/g, '_')
+        const { data: settingRow } = await supabaseAdmin
+            .from('admin_settings').select('value').eq('key', settingKey).single()
+        const upgradePrice = settingRow ? Number((settingRow as any).value) : 0
+        if (!upgradePrice || upgradePrice <= 0) {
+            return NextResponse.json({ error: 'Upgrade price not configured for ' + tier }, { status: 400 })
         }
-
 
         // No fees for membership payments - customer pays exact price
         const fee = 0
         const totalAmount = upgradePrice
 
         // Create a pending record in wallet_payments so the webhook can find it
-        const reference = `agent_upgrade_${generateReferenceCode()}`
+        const reference = 'upgrade_' + generateReferenceCode()
 
         // Get user's wallet
         const { data: wallet } = await supabaseAdmin
@@ -106,8 +95,6 @@ export async function POST(request: Request) {
         if (!wallet) {
             throw new Error('User wallet not found')
         }
-
-        const planDays = plan === '3d' ? 3 : (plan === '14d' ? 14 : 30)
 
         const { error: paymentError } = await (supabaseAdmin
             .from('wallet_payments') as any)
@@ -122,11 +109,7 @@ export async function POST(request: Request) {
                 status: 'pending',
                 metadata: {
                     user_id: user.id,
-                    upgrade_type: 'agent',
-                    plan_type: plan,
-                    plan_days: planDays,
-                    plan_label: planLabel,
-                    base_amount: upgradePrice,
+                    target_role: tier,
                 }
             })
 
@@ -144,16 +127,11 @@ export async function POST(request: Request) {
             },
             body: JSON.stringify({
                 email: user.email,
-                amount: Math.round(totalAmount * 100), // Convert to pesewas
+                amount: Math.round(upgradePrice * 100), // Convert to pesewas
                 reference,
                 metadata: {
                     user_id: user.id,
-                    upgrade_type: 'agent',
-                    plan_type: plan,
-                    plan_days: planDays,
-                    plan_label: planLabel,
-                    base_amount: upgradePrice,
-                    fee: 0,
+                    target_role: tier,
                 },
                 callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/verify?reference=${reference}`,
             }),
@@ -191,12 +169,7 @@ export async function POST(request: Request) {
                 // Also store the full initialization response in metadata for debugging
                 metadata: {
                     user_id: user.id,
-                    upgrade_type: 'agent',
-                    plan_type: plan,
-                    plan_days: planDays,
-                    plan_label: planLabel,
-                    base_amount: upgradePrice,
-                    fee: 0,
+                    target_role: tier,
                     init_response: paystackData.data
                 }
             })
@@ -213,7 +186,7 @@ export async function POST(request: Request) {
             provider_reference: paystackData.data.reference
         })
     } catch (error: any) {
-        console.error('Error initializing agent upgrade:', error)
+        console.error('Error initializing upgrade:', error)
         return NextResponse.json(
             { error: error.message || 'Failed to initialize upgrade' },
             { status: 500 }
