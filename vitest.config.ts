@@ -5,6 +5,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['lib/**/*.test.ts'],
+    pool: 'forks',
+    poolOptions: { forks: { singleFork: true } },
   },
   resolve: {
     alias: { '@': path.resolve(__dirname, '.') },
