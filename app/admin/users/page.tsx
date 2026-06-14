@@ -312,6 +312,9 @@ export default function AdminUsersPage() {
                                 <SelectItem value="all">All Roles</SelectItem>
                                 <SelectItem value="admin">Admin</SelectItem>
                                 <SelectItem value="sub-admin">Sub-Admin</SelectItem>
+                                <SelectItem value="dealer">Dealer</SelectItem>
+                                <SelectItem value="premium-agent">Premium Agent</SelectItem>
+                                <SelectItem value="super-agent">Super Agent</SelectItem>
                                 <SelectItem value="agent">Agent</SelectItem>
                                 <SelectItem value="user">Customer</SelectItem>
                             </SelectContent>
@@ -369,15 +372,19 @@ export default function AdminUsersPage() {
                                             <div>
                                                 <h3 className="font-bold text-xl text-slate-900 dark:text-white line-clamp-1">{user.first_name} {user.last_name}</h3>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    {user.role === 'admin' ? (
-                                                        <Badge className="text-white" style={{ backgroundColor: '#E60000' }}>Admin</Badge>
-                                                    ) : user.role === 'sub-admin' ? (
-                                                        <Badge className="text-black" style={{ backgroundColor: '#FACC15' }}>Sub-Admin</Badge>
-                                                    ) : user.role === 'agent' ? (
-                                                        <Badge className="text-white" style={{ backgroundColor: '#25D366' }}>Agent</Badge>
-                                                    ) : (
-                                                        <Badge className="text-white" style={{ backgroundColor: '#0056B3' }}>Customer</Badge>
-                                                    )}
+                                                    {(() => {
+                                                        const userRole = (user.role || 'user') as UserRole
+                                                        const cfg = roleConfig[userRole] || roleConfig['user']
+                                                        const isLight = userRole === 'sub-admin'
+                                                        return (
+                                                            <Badge
+                                                                className={isLight ? 'text-black' : 'text-white'}
+                                                                style={{ backgroundColor: cfg.color }}
+                                                            >
+                                                                {cfg.label}
+                                                            </Badge>
+                                                        )
+                                                    })()}
                                                     <div className={`h-2 w-2 rounded-full ${user.status === 'active' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500'}`} />
                                                 </div>
                                             </div>
@@ -431,8 +438,26 @@ export default function AdminUsersPage() {
                                                 )}
                                                 {user.role !== 'agent' && (
                                                     <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'agent')}>
-                                                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: '#25D366' }} />
-                                                        Make Agent
+                                                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: roleConfig['agent'].color }} />
+                                                        Make {roleConfig['agent'].label}
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {user.role !== 'super-agent' && (
+                                                    <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'super-agent')}>
+                                                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: roleConfig['super-agent'].color }} />
+                                                        Make {roleConfig['super-agent'].label}
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {user.role !== 'premium-agent' && (
+                                                    <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'premium-agent')}>
+                                                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: roleConfig['premium-agent'].color }} />
+                                                        Make {roleConfig['premium-agent'].label}
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {user.role !== 'dealer' && (
+                                                    <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'dealer')}>
+                                                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: roleConfig['dealer'].color }} />
+                                                        Make {roleConfig['dealer'].label}
                                                     </DropdownMenuItem>
                                                 )}
                                                 {user.role !== 'sub-admin' && (

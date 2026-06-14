@@ -50,6 +50,9 @@ interface PackageFormData {
     size: string
     price: number
     agent_price: number
+    super_agent_price: number
+    premium_agent_price: number
+    dealer_price: number
     cost_price: number
     description: string
     is_available: boolean
@@ -61,6 +64,9 @@ const defaultFormData: PackageFormData = {
     size: '',
     price: 0,
     agent_price: 0,
+    super_agent_price: 0,
+    premium_agent_price: 0,
+    dealer_price: 0,
     cost_price: 0,
     description: '',
     is_available: true,
@@ -111,6 +117,9 @@ export default function AdminPackagesPage() {
             size: pkg.size,
             price: pkg.price,
             agent_price: (pkg as any).agent_price || 0,
+            super_agent_price: (pkg as any).super_agent_price || 0,
+            premium_agent_price: (pkg as any).premium_agent_price || 0,
+            dealer_price: (pkg as any).dealer_price || 0,
             cost_price: (pkg as any).cost_price || 0,
             description: pkg.description || '',
             is_available: pkg.is_available,
@@ -392,6 +401,36 @@ export default function AdminPackagesPage() {
                                     placeholder="0.00"
                                 />
                                 <p className="text-[10px] text-muted-foreground">Optional: Set specifically for agents</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Super Agent Price (GHS)</Label>
+                                <Input
+                                    type="number"
+                                    value={formData.super_agent_price}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, super_agent_price: parseFloat(e.target.value) || 0 }))}
+                                    placeholder="0.00"
+                                />
+                                <p className="text-[10px] text-muted-foreground">Optional: Set specifically for super agents</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Premium Agent Price (GHS)</Label>
+                                <Input
+                                    type="number"
+                                    value={formData.premium_agent_price}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, premium_agent_price: parseFloat(e.target.value) || 0 }))}
+                                    placeholder="0.00"
+                                />
+                                <p className="text-[10px] text-muted-foreground">Optional: Set specifically for premium agents</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Dealer Price (GHS)</Label>
+                                <Input
+                                    type="number"
+                                    value={formData.dealer_price}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, dealer_price: parseFloat(e.target.value) || 0 }))}
+                                    placeholder="0.00"
+                                />
+                                <p className="text-[10px] text-muted-foreground">Optional: Set specifically for dealers</p>
                             </div>
                             <div className="space-y-2">
                                 <Label>Cost Price (GHS)</Label>

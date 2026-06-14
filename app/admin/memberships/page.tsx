@@ -1,19 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { clearPricingCache } from '@/lib/pricing-cache'
-import { formatCurrency } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
     Users,
     Clock,
-    Calendar,
     ShieldCheck,
     Plus,
     Save,
@@ -23,6 +19,7 @@ import {
     MoreVertical,
     History
 } from 'lucide-react'
+import { RESELLER_TIERS, roleConfig } from '@/lib/roles'
 import {
     Dialog,
     DialogContent,
@@ -56,13 +53,10 @@ export default function AdminMembershipsPage() {
     const [reduceDays, setReduceDays] = useState('3')
     const [isReducing, setIsReducing] = useState(false)
 
-    // Pricing state
-    const [prices, setPrices] = useState({
-        '3d': '9.99',
-        '14d': '49.99',
-        '30d': '99.99'
-    })
-    const [showStrikethrough, setShowStrikethrough] = useState(false)
+    // Pricing state — keyed by tier slug
+    const [prices, setPrices] = useState<Record<string, string>>(
+        Object.fromEntries(RESELLER_TIERS.map(t => [t, '0']))
+    )
 
     useEffect(() => {
         fetchData()
@@ -71,24 +65,16 @@ export default function AdminMembershipsPage() {
     const fetchData = async () => {
         setLoading(true)
         try {
-            // Fetch Prices
-            const { data: settingsData } = await (supabase as any)
-                .from('admin_settings')
-                .select('*')
-
-            if (settingsData) {
-                const p3 = settingsData.find((s: any) => s.key === 'agent_upgrade_price_3d')?.value || '9.99'
-                const p14 = settingsData.find((s: any) => s.key === 'agent_upgrade_price_14d')?.value || '49.99'
-                const p30 = settingsData.find((s: any) => s.key === 'agent_upgrade_price_30d')?.value || '99.99'
-                const showStrike = settingsData.find((s: any) => s.key === 'show_price_strikethrough')?.value === 'true'
-                setPrices({
-                    '3d': String(p3),
-                    '14d': String(p14),
-                    '30d': String(p30)
-                })
-                setShowStrikethrough(showStrike)
+            // Fetch upgrade prices from API
+            const pricesResponse = await fetch('/api/admin/get-prices')
+            if (pricesResponse.ok) {
+                const pricesData = await pricesResponse.json()
+                if (pricesData.prices) {
+                    setPrices(Object.fromEntries(
+                        RESELLER_TIERS.map(t => [t, String(pricesData.prices[t] ?? '0')])
+                    ))
+                }
             }
-
 
             // Fetch Agents via API route (bypasses RLS)
             const agentsResponse = await fetch('/api/admin/agents')
@@ -113,10 +99,16 @@ export default function AdminMembershipsPage() {
     const handleSavePrices = async () => {
         setIsSavingPrices(true)
         try {
+            // Convert string values to numbers for the API
+            const numericPrices: Record<string, number> = {}
+            for (const t of RESELLER_TIERS) {
+                numericPrices[t] = parseFloat(prices[t]) || 0
+            }
+
             const response = await fetch('/api/admin/update-prices', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prices, showStrikethrough })
+                body: JSON.stringify({ prices: numericPrices })
             })
 
             const data = await response.json()
@@ -127,11 +119,11 @@ export default function AdminMembershipsPage() {
 
             // Clear pricing cache so users get fresh prices
             clearPricingCache()
-            toast.success(data.message || '✅ Prices updated successfully!')
+            toast.success('Prices updated successfully!')
             await fetchData()
         } catch (error: any) {
             console.error('Error saving prices:', error)
-            toast.error('❌ ' + error.message)
+            toast.error(error.message)
         } finally {
             setIsSavingPrices(false)
         }
@@ -247,48 +239,17 @@ export default function AdminMembershipsPage() {
                     </CardHeader>
                     <CardContent className="pt-6 space-y-6">
                         <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>3 Days Access (GHS) - Starter</Label>
-                                <Input
-                                    type="number"
-                                    value={prices['3d']}
-                                    onChange={(e) => setPrices({ ...prices, '3d': e.target.value })}
-                                    className="font-bold text-lg"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>14 Days Access (GHS)</Label>
-                                <Input
-                                    type="number"
-                                    value={prices['14d']}
-                                    onChange={(e) => setPrices({ ...prices, '14d': e.target.value })}
-                                    className="font-bold text-lg border-amber-200"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>30 Days Access (GHS)</Label>
-                                <Input
-                                    type="number"
-                                    value={prices['30d']}
-                                    onChange={(e) => setPrices({ ...prices, '30d': e.target.value })}
-                                    className="font-bold text-lg"
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-3 pt-2 border-t">
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="strikethrough"
-                                    checked={showStrikethrough}
-                                    onCheckedChange={(checked) => setShowStrikethrough(checked as boolean)}
-                                />
-                                <Label htmlFor="strikethrough" className="text-sm font-medium cursor-pointer">
-                                    Show old prices with strikethrough
-                                </Label>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Enable to display previous prices crossed out when prices change
-                            </p>
+                            {RESELLER_TIERS.map((tier) => (
+                                <div key={tier} className="space-y-2">
+                                    <Label>{roleConfig[tier].label} Upgrade Price (GHS)</Label>
+                                    <Input
+                                        type="number"
+                                        value={prices[tier]}
+                                        onChange={(e) => setPrices({ ...prices, [tier]: e.target.value })}
+                                        className="font-bold text-lg"
+                                    />
+                                </div>
+                            ))}
                         </div>
                         <Button
                             className="w-full bg-slate-900 hover:bg-slate-800 h-12 text-base font-black"
