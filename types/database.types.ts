@@ -94,37 +94,46 @@ export type Database = {
           agent_price: number | null
           cost_price: number | null
           created_at: string | null
+          dealer_price: number | null
           description: string | null
           id: string
           is_available: boolean | null
           network: string
+          premium_agent_price: number | null
           price: number
           size: string
           sort_order: number | null
+          super_agent_price: number | null
         }
         Insert: {
           agent_price?: number | null
           cost_price?: number | null
           created_at?: string | null
+          dealer_price?: number | null
           description?: string | null
           id?: string
           is_available?: boolean | null
           network: string
+          premium_agent_price?: number | null
           price: number
           size: string
           sort_order?: number | null
+          super_agent_price?: number | null
         }
         Update: {
           agent_price?: number | null
           cost_price?: number | null
           created_at?: string | null
+          dealer_price?: number | null
           description?: string | null
           id?: string
           is_available?: boolean | null
           network?: string
+          premium_agent_price?: number | null
           price?: number
           size?: string
           sort_order?: number | null
+          super_agent_price?: number | null
         }
         Relationships: []
       }
