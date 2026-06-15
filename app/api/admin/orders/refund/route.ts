@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
 import { sendOrderRefundSMS } from '@/lib/sms-service'
+import { setOrderStatus } from '@/lib/order-status'
 
 export async function POST(request: NextRequest) {
     try {
@@ -104,24 +105,19 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // 6. Update order status
-        const orderUpdate: any = {
-            payment_status: 'refunded',
-            status: 'refunded',
-            updated_at: new Date().toISOString()
-        }
+        // 6. Update order status and payment_status (also enqueues webhook deliveries)
+        await setOrderStatus(orderId, 'refunded', { paymentStatus: 'refunded' }, supabase)
 
+        // Assign download_batch_id separately if available (setOrderStatus only handles status)
         if (batchId) {
-            orderUpdate.download_batch_id = batchId
-        }
+            const { error: batchAssignError } = await (supabase.from('orders') as any)
+                .update({ download_batch_id: batchId })
+                .eq('id', orderId)
 
-        const { error: orderUpdateError } = await (supabase.from('orders') as any)
-            .update(orderUpdate)
-            .eq('id', orderId)
-
-        if (orderUpdateError) {
-            console.error('[RefundOrder] Order update error:', orderUpdateError)
-            throw orderUpdateError
+            if (batchAssignError) {
+                console.error('[RefundOrder] Batch assign error:', batchAssignError)
+                // Don't fail the refund if batch assignment fails
+            }
         }
 
         // 7. Create user notification

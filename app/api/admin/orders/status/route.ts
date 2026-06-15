@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
+import { setOrderStatus } from '@/lib/order-status'
 
 export async function POST(request: NextRequest) {
     try {
@@ -61,24 +62,20 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            // Update order with new status and batch assignment
-            const orderUpdate: any = {
-                status,
-                updated_at: new Date().toISOString()
-            }
+            // Update order status (also enqueues webhook deliveries)
+            await setOrderStatus(orderId, status, {}, supabase)
 
+            // Assign download_batch_id separately if needed (setOrderStatus only handles status)
             if (batchIdToAssign && !(order as any).download_batch_id) {
-                orderUpdate.download_batch_id = batchIdToAssign
-            }
+                const { error: batchAssignError } = await (supabase
+                    .from('orders') as any)
+                    .update({ download_batch_id: batchIdToAssign })
+                    .eq('id', orderId)
 
-            const { error: updateError } = await (supabase
-                .from('orders') as any)
-                .update(orderUpdate)
-                .eq('id', orderId)
-
-            if (updateError) {
-                console.error(`[AdminStatusUpdate] Update error for order ${orderId}:`, updateError)
-                throw updateError
+                if (batchAssignError) {
+                    console.error(`[AdminStatusUpdate] Batch assign error for order ${orderId}:`, batchAssignError)
+                    // Don't fail the status update if batch assignment fails
+                }
             }
         } else if (batchId) {
             console.log(`[AdminStatusUpdate] Updating batch: ${batchId} to ${status}`)
@@ -99,18 +96,8 @@ export async function POST(request: NextRequest) {
             console.log(`[AdminStatusUpdate] Found ${affectedOrders.length} updatable orders in batch ${batchId} (excluding refunded)`)
 
             if (affectedOrders.length > 0) {
-                const { error: updateError } = await (supabase
-                    .from('orders') as any)
-                    .update({
-                        status,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('download_batch_id', batchId)
-                    .neq('payment_status', 'refunded')
-
-                if (updateError) {
-                    console.error(`[AdminStatusUpdate] Update error for batch ${batchId}:`, updateError)
-                    throw updateError
+                for (const o of affectedOrders) {
+                    await setOrderStatus((o as any).id, status, {}, supabase)
                 }
             }
         }

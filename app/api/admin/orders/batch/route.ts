@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
+import { setOrderStatus } from '@/lib/order-status'
 
 export async function POST(request: NextRequest) {
     try {
@@ -75,16 +76,20 @@ export async function POST(request: NextRequest) {
 
         if (batchError) throw batchError
 
-        // 3. Link orders to batch and mark as processing
+        // 3. Link orders to batch (download_batch_id assignment)
         const { error: updateError } = await (supabase
             .from('orders') as any)
             .update({
                 download_batch_id: (batch as any).id,
-                status: 'processing'
             })
             .in('id', orderIds)
 
         if (updateError) throw updateError
+
+        // 4. Mark each order as processing and enqueue webhook deliveries
+        for (const id of orderIds) {
+            await setOrderStatus(id, 'processing', {}, supabase)
+        }
 
         return NextResponse.json({
             success: true,
