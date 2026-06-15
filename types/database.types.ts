@@ -38,6 +38,125 @@ export type Database = {
         }
         Relationships: []
       }
+      api_keys: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          key_hash: string
+          key_prefix: string
+          label: string | null
+          last_used_at: string | null
+          rate_limit_per_min: number
+          status: string
+          updated_at: string
+          user_id: string
+          webhook_events: string[]
+          webhook_secret: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          key_hash: string
+          key_prefix: string
+          label?: string | null
+          last_used_at?: string | null
+          rate_limit_per_min?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+          webhook_events?: string[]
+          webhook_secret?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          label?: string | null
+          last_used_at?: string | null
+          rate_limit_per_min?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+          webhook_events?: string[]
+          webhook_secret?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_keys_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_webhook_deliveries: {
+        Row: {
+          api_key_id: string
+          attempts: number
+          created_at: string
+          event: string
+          id: string
+          last_response_code: number | null
+          next_attempt_at: string
+          order_id: string | null
+          payload: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          api_key_id: string
+          attempts?: number
+          created_at?: string
+          event: string
+          id?: string
+          last_response_code?: number | null
+          next_attempt_at?: string
+          order_id?: string | null
+          payload: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          api_key_id?: string
+          attempts?: number
+          created_at?: string
+          event?: string
+          id?: string
+          last_response_code?: number | null
+          next_attempt_at?: string
+          order_id?: string | null
+          payload?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_webhook_deliveries_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       complaints: {
         Row: {
           admin_response: string | null
