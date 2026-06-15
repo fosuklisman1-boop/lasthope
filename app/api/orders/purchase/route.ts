@@ -4,7 +4,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { sendOrderSuccessEmail, sendAdminNewOrderAlert } from '@/lib/email-service'
 import { sendOrderSuccessSMS, sendAdminAgentOrderAlert } from '@/lib/sms-service'
-import { placeOrder } from '@/lib/orders'
+import { placeOrder, normalizeGhanaPhone } from '@/lib/orders'
 import { randomUUID } from 'crypto'
 
 export async function POST(request: NextRequest) {
@@ -37,11 +37,12 @@ export async function POST(request: NextRequest) {
         // Service role client for privileged operations
         const supabase = createServerClient()
 
-        // Check if phone is blacklisted
+        // Check if phone is blacklisted (normalize to E.164 first so +233... and 0... match the same row)
+        const normalizedPhone = normalizeGhanaPhone(phoneNumber) ?? phoneNumber
         const { data: blacklisted } = await (supabase as any)
             .from('phone_blacklist')
             .select('id')
-            .eq('phone_number', phoneNumber)
+            .eq('phone_number', normalizedPhone)
             .single()
 
         if (blacklisted) {

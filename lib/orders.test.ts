@@ -6,7 +6,11 @@ function fakeSupabase(opts: { pkg?: any; existing?: any; debitOk?: boolean }) {
     from(table: string) {
       const api: any = {
         select: () => api, eq: () => api, is: () => api,
-        maybeSingle: async () => ({ data: table === 'orders' ? (opts.existing ?? null) : null, error: null }),
+        maybeSingle: async () => {
+          if (table === 'orders') return { data: opts.existing ?? null, error: null }
+          if (table === 'users') return { data: { role: 'user' }, error: null }
+          return { data: null, error: null }
+        },
         single: async () => {
           if (table === 'data_packages') return { data: opts.pkg ?? null, error: opts.pkg ? null : { code: 'PGRST116' } }
           if (table === 'wallets') return { data: { id: 'w1', balance: 100 }, error: null }

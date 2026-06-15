@@ -35,8 +35,10 @@ export async function placeOrder(input: PlaceOrderInput, supabase: any): Promise
   const { data: pkg } = await supabase.from('data_packages').select('*').eq('id', packageId).eq('is_available', true).single()
   if (!pkg) return { ok: false, code: 'package_not_found', message: 'Package not found or unavailable', httpStatus: 404 }
 
-  const { data: u } = await supabase.from('users').select('role').eq('id', userId).single()
-  const charge = getPriceForRole(pkg, u?.role)
+  const { data: u, error: userErr } = await supabase.from('users').select('role').eq('id', userId).maybeSingle()
+  if (userErr) return { ok: false, code: 'pricing_unavailable', message: 'Could not resolve pricing', httpStatus: 503 }
+  if (!u) return { ok: false, code: 'user_not_found', message: 'Account not found', httpStatus: 404 }
+  const charge = getPriceForRole(pkg, u.role)
 
   const { data: wallet } = await supabase.from('wallets').select('id').eq('user_id', userId).single()
   if (!wallet) return { ok: false, code: 'wallet_not_found', message: 'Wallet not found', httpStatus: 404 }
