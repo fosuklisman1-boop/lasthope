@@ -18,7 +18,8 @@ function err(error: string, code: string, status: number, extraHeaders?: Record<
 export async function requireApiKey(request: Request): Promise<ApiKeyAuth | NextResponse> {
   const ip = getTrustedClientIp(request)
 
-  // 1. Pre-auth IP throttle (independent of any key id). Throttles anonymous floods/guessing.
+  // 1. Pre-auth IP throttle: bounds anonymous floods AND online key-guessing
+  //    (every request counts, valid or not; 256-bit keys make this ample).
   const ipLimit = await checkRateLimit(`apikey-ip:${ip}`, 30, 60)
   if (!ipLimit.allowed) return err('Too many requests', 'rate_limited', 429, { 'Retry-After': String(ipLimit.retryAfterSeconds) })
 
@@ -28,10 +29,7 @@ export async function requireApiKey(request: Request): Promise<ApiKeyAuth | Next
     return err('API key must be sent in the Authorization header, not the query string', 'key_in_query', 400)
   }
   const presented = parseBearerKey(request.headers.get('authorization'))
-  if (!presented) {
-    await checkRateLimit(`apikey-fail:${ip}`, 10, 60)
-    return err('Missing or malformed API key', 'unauthorized', 401)
-  }
+  if (!presented) return err('Missing or malformed API key', 'unauthorized', 401)
 
   // 3. Hash + lookup (service-role). Fail CLOSED: DB error => 503, not allow.
   const supabase = createServerClient()
@@ -42,16 +40,14 @@ export async function requireApiKey(request: Request): Promise<ApiKeyAuth | Next
     .maybeSingle()
 
   if (lookupError) return err('Auth service unavailable', 'auth_unavailable', 503)
-  if (!key || key.status !== 'active') {
-    await checkRateLimit(`apikey-fail:${ip}`, 10, 60)
-    return err('Invalid API key', 'unauthorized', 401)
-  }
+  if (!key || key.status !== 'active') return err('Invalid API key', 'unauthorized', 401)
 
   // 4. Load owner role + wallet.
-  const { data: user } = await (supabase.from('users') as any)
-    .select('id, role').eq('id', key.user_id).single()
-  const { data: wallet } = await (supabase.from('wallets') as any)
-    .select('id, balance').eq('user_id', key.user_id).single()
+  const { data: user, error: userError } = await (supabase.from('users') as any)
+    .select('id, role').eq('id', key.user_id).maybeSingle()
+  const { data: wallet, error: walletError } = await (supabase.from('wallets') as any)
+    .select('id, balance').eq('user_id', key.user_id).maybeSingle()
+  if (userError || walletError) return err('Auth service unavailable', 'auth_unavailable', 503)
   if (!user || !wallet) return err('Account not provisioned', 'account_error', 500)
 
   // 5. Per-key rate limit.
