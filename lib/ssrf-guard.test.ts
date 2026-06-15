@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isPrivateIp, validateWebhookUrlShape } from './ssrf-guard'
+import { isPrivateIp, validateWebhookUrlShape, resolveSafeWebhookTarget } from './ssrf-guard'
 
 describe('ssrf-guard', () => {
   it('flags private/loopback/link-local/metadata IPs', () => {
@@ -15,5 +15,14 @@ describe('ssrf-guard', () => {
     expect(validateWebhookUrlShape('https://localhost/x').ok).toBe(false)
     expect(validateWebhookUrlShape('https://127.0.0.1/x').ok).toBe(false)
     expect(validateWebhookUrlShape('ftp://x').ok).toBe(false)
+  })
+  it('rejects IPv6 literal private hosts and trailing-dot localhost in the shape check', () => {
+    expect(validateWebhookUrlShape('https://[::1]/x').ok).toBe(false)
+    expect(validateWebhookUrlShape('https://[fc00::1]/x').ok).toBe(false)
+    expect(validateWebhookUrlShape('https://localhost./x').ok).toBe(false)
+  })
+  it('resolveSafeWebhookTarget rejects a private literal and a non-https url', async () => {
+    expect((await resolveSafeWebhookTarget('https://127.0.0.1/x')).ok).toBe(false)
+    expect((await resolveSafeWebhookTarget('http://example.com/x')).ok).toBe(false)
   })
 })

@@ -29,8 +29,9 @@ export function validateWebhookUrlShape(raw: string): { ok: boolean; reason?: st
   try { u = new URL(raw) } catch { return { ok: false, reason: 'invalid_url' } }
   if (u.protocol !== 'https:') return { ok: false, reason: 'must_be_https' }
   const host = u.hostname.toLowerCase()
-  if (host === 'localhost' || host.endsWith('.local')) return { ok: false, reason: 'private_host' }
-  if (net.isIP(host) && isPrivateIp(host)) return { ok: false, reason: 'private_ip' }
+  if (host === 'localhost' || host === 'localhost.' || host.endsWith('.local') || host.endsWith('.local.')) return { ok: false, reason: 'private_host' }
+  const bareHost = host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1) : host
+  if (net.isIP(bareHost) && isPrivateIp(bareHost)) return { ok: false, reason: 'private_ip' }
   return { ok: true }
 }
 
