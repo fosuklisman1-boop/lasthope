@@ -1,3 +1,7 @@
+<!-- NOTE: The canonical, in-app copy of these docs lives in `lib/api-docs.ts`
+     and is served to account holders at `/dashboard/developer/docs`.
+     Keep this file in sync when making content changes. -->
+
 # LASTHOPE Developer API — Integrator Reference
 
 This document covers everything you need to integrate the LASTHOPE data-bundle purchasing API into your own application. All requests are billed to your LASTHOPE wallet at your account's tier price.

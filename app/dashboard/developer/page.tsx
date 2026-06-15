@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/contexts/auth-context'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,7 @@ import {
     AlertCircle,
     CheckCircle2,
     Globe,
+    BookOpen,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
@@ -283,11 +285,19 @@ export default function DeveloperPage() {
     return (
         <div className="space-y-6 max-w-3xl">
             {/* Page header */}
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Developer API</h1>
-                <p className="text-muted-foreground mt-1">
-                    Manage your API keys and webhook configuration for programmatic access.
-                </p>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Developer API</h1>
+                    <p className="text-muted-foreground mt-1">
+                        Manage your API keys and webhook configuration for programmatic access.
+                    </p>
+                </div>
+                <Link href="/dashboard/developer/docs">
+                    <Button variant="outline" className="shrink-0 gap-2">
+                        <BookOpen className="w-4 h-4" />
+                        API Documentation
+                    </Button>
+                </Link>
             </div>
 
             {/* Once-only secret reveal after rotate */}

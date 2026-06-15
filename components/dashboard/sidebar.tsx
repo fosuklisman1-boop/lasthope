@@ -28,7 +28,9 @@ import {
     UserCircle,
     Plus,
     Store,
-    History
+    History,
+    Code2,
+    KeyRound
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -44,6 +46,7 @@ const userNavItems = [
     { href: '/dashboard/complaints', label: 'Complaints', icon: MessageSquare },
     { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
     { href: '/dashboard/my-shop', label: 'My Shop', icon: Store },
+    { href: '/dashboard/developer', label: 'Developer API', icon: Code2 },
     { href: '/dashboard/profile', label: 'Profile', icon: User },
 ]
 
@@ -54,6 +57,7 @@ const adminNavItems = [
     { href: '/admin/memberships', label: 'Agent Members', icon: Crown },
     { href: '/admin/users', label: 'Users', icon: Users },
     { href: '/admin/packages', label: 'Packages', icon: Package },
+    { href: '/admin/api-keys', label: 'API Keys', icon: KeyRound },
     { href: '/admin/complaints', label: 'Complaints', icon: MessageSquare },
     { href: '/admin/announcements', label: 'Announce', icon: Bell },
     { href: '/admin/sms-broadcast', label: 'SMS', icon: MessageSquare },
