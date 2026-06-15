@@ -42,3 +42,14 @@ export function getClientIp(request: Request): string {
     if (forwarded) return forwarded.split(',')[0].trim()
     return request.headers.get('x-real-ip') || 'unknown'
 }
+
+// Trusted client IP for security-sensitive limits. On Vercel, x-vercel-forwarded-for
+// and x-real-ip are set by the platform proxy and cannot be spoofed by the client,
+// unlike the inbound x-forwarded-for (whose leftmost entry is attacker-controlled).
+export function getTrustedClientIp(request: Request): string {
+    const vercel = request.headers.get('x-vercel-forwarded-for')
+    if (vercel) return vercel.split(',')[0].trim()
+    const real = request.headers.get('x-real-ip')
+    if (real) return real.trim()
+    return 'unknown'
+}
