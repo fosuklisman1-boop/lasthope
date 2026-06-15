@@ -105,20 +105,9 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // 6. Update order status and payment_status (also enqueues webhook deliveries)
-        await setOrderStatus(orderId, 'refunded', { paymentStatus: 'refunded' }, supabase)
-
-        // Assign download_batch_id separately if available (setOrderStatus only handles status)
-        if (batchId) {
-            const { error: batchAssignError } = await (supabase.from('orders') as any)
-                .update({ download_batch_id: batchId })
-                .eq('id', orderId)
-
-            if (batchAssignError) {
-                console.error('[RefundOrder] Batch assign error:', batchAssignError)
-                // Don't fail the refund if batch assignment fails
-            }
-        }
+        // 6. Update order status and payment_status atomically (also merges download_batch_id and enqueues webhook deliveries)
+        const newBatchId = batchId && !(order as any).download_batch_id ? batchId : null
+        await setOrderStatus(orderId, 'refunded', { paymentStatus: 'refunded', extra: newBatchId ? { download_batch_id: newBatchId } : {} }, supabase)
 
         // 7. Create user notification
         const { error: notificationError } = await (supabase.from('notifications') as any).insert({

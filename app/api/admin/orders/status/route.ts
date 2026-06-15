@@ -62,21 +62,9 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            // Update order status (also enqueues webhook deliveries)
-            await setOrderStatus(orderId, status, {}, supabase)
-
-            // Assign download_batch_id separately if needed (setOrderStatus only handles status)
-            if (batchIdToAssign && !(order as any).download_batch_id) {
-                const { error: batchAssignError } = await (supabase
-                    .from('orders') as any)
-                    .update({ download_batch_id: batchIdToAssign })
-                    .eq('id', orderId)
-
-                if (batchAssignError) {
-                    console.error(`[AdminStatusUpdate] Batch assign error for order ${orderId}:`, batchAssignError)
-                    // Don't fail the status update if batch assignment fails
-                }
-            }
+            // Update order status atomically (also merges download_batch_id and enqueues webhook deliveries)
+            const newBatchId = batchIdToAssign && !(order as any).download_batch_id ? batchIdToAssign : null
+            await setOrderStatus(orderId, status, { extra: newBatchId ? { download_batch_id: newBatchId } : {} }, supabase)
         } else if (batchId) {
             console.log(`[AdminStatusUpdate] Updating batch: ${batchId} to ${status}`)
             // Fetch orders in batch - use regular join (outer) to include guest orders
