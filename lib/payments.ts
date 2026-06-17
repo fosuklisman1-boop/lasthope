@@ -47,6 +47,16 @@ export async function processCompletedWalletPayment(reference: string, providerM
         return processCompletedUpgradePayment(reference, providerMetadata)
     }
 
+    // Verify the amount Paystack actually charged matches the payment's
+    // expected total (amount + fee), so a wallet can't be credited for less.
+    if (providerMetadata?.amount !== undefined && providerMetadata?.amount !== null) {
+        const expectedKobo = Math.round(Number(payment.total_amount) * 100)
+        if (providerMetadata.amount !== expectedKobo) {
+            console.error(`[PaymentProcess] AMOUNT MISMATCH for ${reference}: expected ${expectedKobo}, got ${providerMetadata.amount}`)
+            return { success: false, error: 'Amount mismatch' }
+        }
+    }
+
     // 2. Atomic Update (Idempotency Check)
     console.log(`[PaymentProcess] Attempting atomic status update to 'completed' for payment ${payment.id}...`);
 
@@ -193,6 +203,16 @@ export async function processCompletedUpgradePayment(reference: string, provider
     }
 
     console.log(`[UpgradeProcess] Found payment record. ID: ${payment.id}, Current status: ${payment.status}`);
+
+    // Verify the amount Paystack actually charged matches the payment's
+    // expected total (amount + fee), so a role can't be granted for less.
+    if (providerMetadata?.amount !== undefined && providerMetadata?.amount !== null) {
+        const expectedKobo = Math.round(Number(payment.total_amount) * 100)
+        if (providerMetadata.amount !== expectedKobo) {
+            console.error(`[PaymentProcess] AMOUNT MISMATCH for ${reference}: expected ${expectedKobo}, got ${providerMetadata.amount}`)
+            return { success: false, error: 'Amount mismatch' }
+        }
+    }
 
     // 2. Atomic Update (Idempotency Check)
     console.log(`[UpgradeProcess] Attempting atomic status update to 'completed' for payment ID: ${payment.id}, reference: ${reference}...`);

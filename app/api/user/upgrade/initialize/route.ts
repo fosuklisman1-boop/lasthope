@@ -14,14 +14,13 @@ export async function POST(request: Request) {
             // @ts-expect-error - auth-helpers types expect Promise but runtime needs synchronous object
             cookies: () => cookieStore
         })
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-        if (sessionError || !session?.user) {
+        if (authError || !user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
         const { tier } = await request.json().catch(() => ({}));
-        const user = session.user
 
         // Validate tier
         if (!RESELLER_TIERS.includes(tier)) {

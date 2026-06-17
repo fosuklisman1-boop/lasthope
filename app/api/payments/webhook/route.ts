@@ -21,7 +21,10 @@ export async function POST(request: NextRequest) {
 
         const signature = request.headers.get('x-paystack-signature')
 
-        if (hash !== signature) {
+        const sigBuf = Buffer.from(signature || '', 'utf8')
+        const hashBuf = Buffer.from(hash, 'utf8')
+        const valid = hashBuf.length === sigBuf.length && crypto.timingSafeEqual(hashBuf, sigBuf)
+        if (!valid) {
             return NextResponse.json({ message: 'Invalid signature' }, { status: 400 })
         }
 

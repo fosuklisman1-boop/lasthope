@@ -23,7 +23,7 @@ export async function POST(request: Request) {
         if (auth instanceof NextResponse) return auth
 
         // Prevent changing own status
-        if (userId === auth.session.user.id) {
+        if (userId === auth.userId) {
             return NextResponse.json(
                 { error: 'Cannot change your own account status' },
                 { status: 400 }
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
             )
         }
 
-        console.log(`[Admin] User ${userId} status updated to ${status} by ${auth.session.user.id}`)
+        console.log(`[Admin] User ${userId} status updated to ${status} by ${auth.userId}`)
 
         return NextResponse.json({ success: true })
 

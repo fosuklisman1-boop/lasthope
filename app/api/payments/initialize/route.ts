@@ -26,12 +26,12 @@ export async function POST(request: NextRequest) {
         }
 
         // Get current user
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.user) {
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+        if (authError || !authUser) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const userId = session.user.id
+        const userId = authUser.id
 
         // L4: throttle wallet top-up initialization (payment-spam protection)
         const rateLimit = await checkRateLimit(`payments-init:${userId}`, 5, 60)
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                email: (user as any)?.email || session.user.email,
+                email: (user as any)?.email || authUser.email,
                 amount: Math.round(totalAmount * 100), // Paystack uses kobo/pesewas
                 currency: 'GHS',
                 reference: reference,

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
         if (auth instanceof NextResponse) return auth
 
         // Prevent self-deletion
-        if (userId === auth.session.user.id) {
+        if (userId === auth.userId) {
             return NextResponse.json(
                 { error: 'Cannot delete your own account' },
                 { status: 400 }

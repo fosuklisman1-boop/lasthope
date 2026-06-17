@@ -2,10 +2,9 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { createServerClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
-import type { Session } from '@supabase/supabase-js'
 
 export type AdminAuth = {
-    session: Session
+    userId: string
     role: 'admin' | 'sub-admin'
     supabase: ReturnType<typeof createServerClient>
 }
@@ -20,23 +19,23 @@ export async function requireAdmin(): Promise<AdminAuth | NextResponse> {
         // @ts-expect-error - Next.js 15 cookie types
         cookies: () => cookieStore
     })
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (!session) {
+    if (authError || !user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const supabaseService = createServerClient()
-    const { data: user } = await supabaseService
+    const { data: userRecord } = await supabaseService
         .from('users')
         .select('role')
-        .eq('id', session.user.id)
+        .eq('id', user.id)
         .single()
 
-    const role = user?.role
+    const role = userRecord?.role
     if (!role || !['admin', 'sub-admin'].includes(role)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    return { session, role: role as 'admin' | 'sub-admin', supabase: supabaseService }
+    return { userId: user.id, role: role as 'admin' | 'sub-admin', supabase: supabaseService }
 }

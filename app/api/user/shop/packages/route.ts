@@ -9,9 +9,9 @@ export async function GET(request: NextRequest) {
             // @ts-expect-error - Next.js 15 cookie types
             cookies: () => cookieStore 
         })
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-        if (!session) {
+        if (authError || !user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         const { data: shop } = await supabase
             .from('shops')
             .select('id')
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .single()
 
         if (!shop) {
@@ -70,9 +70,9 @@ export async function POST(request: NextRequest) {
             // @ts-expect-error - Next.js 15 cookie types
             cookies: () => cookieStore 
         })
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-        if (!session) {
+        if (authError || !user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
             .from('shops')
             .select('id')
             .eq('id', shopId)
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .single()
 
         if (!shop) {

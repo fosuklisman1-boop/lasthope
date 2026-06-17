@@ -10,9 +10,9 @@ export async function GET(request: NextRequest) {
             // @ts-expect-error - Next.js 15 cookie types
             cookies: () => cookieStore 
         })
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-        if (!session) {
+        if (authError || !user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
         const { data: withdrawals, error: wError } = await supabase
             .from('withdrawals')
             .select('*')
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .order('created_at', { ascending: false })
 
         if (wError) throw wError
@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
         const { data: shops } = await supabase
             .from('shops')
             .select('id')
-            .eq('user_id', session.user.id)
-        
+            .eq('user_id', user.id)
+
         const shopIds = shops?.map(s => s.id) || []
 
         let totalEarnings = 0
@@ -76,9 +76,9 @@ export async function POST(request: NextRequest) {
             // @ts-expect-error - Next.js 15 cookie types
             cookies: () => cookieStore 
         })
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-        if (!session) {
+        if (authError || !user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 1. Double check available balance server-side
-        const { data: shops } = await supabase.from('shops').select('id').eq('user_id', session.user.id)
+        const { data: shops } = await supabase.from('shops').select('id').eq('user_id', user.id)
         const shopIds = shops?.map(s => s.id) || []
         
         let totalEarnings = 0
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         const { data: withdrawals } = await supabase
             .from('withdrawals')
             .select('amount, status')
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .in('status', ['approved', 'pending'])
         
         const hasPending = withdrawals?.some(w => w.status === 'pending')
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
         const { data, error } = await supabase
             .from('withdrawals')
             .insert({
-                user_id: session.user.id,
+                user_id: user.id,
                 amount,
                 payment_method: paymentMethod,
                 payment_details: paymentDetails,

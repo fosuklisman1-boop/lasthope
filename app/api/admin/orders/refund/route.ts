@@ -36,6 +36,25 @@ export async function POST(request: NextRequest) {
             }, { status: 400 })
         }
 
+        // Atomically claim the refund to prevent double-refund (TOCTOU).
+        // Conditionally flip payment_status -> 'refunded' only if it is not already refunded.
+        // Concurrent requests / double-clicks: only one update affects a row; the rest get no row back.
+        const claimTime = new Date().toISOString()
+        const { data: claimed, error: claimErr } = await supabase
+            .from('orders')
+            .update({ payment_status: 'refunded', updated_at: claimTime })
+            .eq('id', orderId)
+            .neq('payment_status', 'refunded')
+            .select('id')
+            .maybeSingle()
+        if (claimErr) {
+            console.error('[RefundOrder] Claim error:', claimErr)
+            return NextResponse.json({ error: 'Failed to process refund' }, { status: 500 })
+        }
+        if (!claimed) {
+            return NextResponse.json({ error: 'This order has already been refunded' }, { status: 400 })
+        }
+
         // 2. Fetch user wallet
         const { data: wallet, error: walletError } = await supabase
             .from('wallets')
@@ -45,6 +64,10 @@ export async function POST(request: NextRequest) {
 
         if (walletError || !wallet) {
             console.error('[RefundOrder] Wallet fetch error:', walletError)
+            // Roll back our atomic claim so a missing wallet doesn't strand the order as refunded.
+            // Conditional on payment_status='refunded' so we only revert the claim we just made.
+            await supabase.from('orders').update({ payment_status: (order as any).payment_status })
+                .eq('id', orderId).eq('payment_status', 'refunded')
             return NextResponse.json({ error: 'User wallet not found' }, { status: 404 })
         }
 
@@ -57,6 +80,10 @@ export async function POST(request: NextRequest) {
 
         if (walletUpdateError || !refundResult) {
             console.error('[RefundOrder] Wallet update error:', walletUpdateError)
+            // Roll back the atomic claim so a failed credit does not leave the order marked refunded.
+            // Conditional on payment_status='refunded' so we only revert the claim we just made.
+            await supabase.from('orders').update({ payment_status: (order as any).payment_status })
+                .eq('id', orderId).eq('payment_status', 'refunded')
             throw walletUpdateError || new Error('Failed to refund wallet')
         }
 

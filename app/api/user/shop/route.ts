@@ -22,16 +22,16 @@ export async function GET(request: NextRequest) {
             // @ts-expect-error - Next.js 15 cookie types
             cookies: () => cookieStore 
         })
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-        if (!session) {
+        if (authError || !user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
         const { data: shop, error } = await supabase
             .from('shops')
             .select('*')
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .single()
 
         if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows found"
@@ -51,9 +51,9 @@ export async function POST(request: NextRequest) {
             // @ts-expect-error - Next.js 15 cookie types
             cookies: () => cookieStore 
         })
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-        if (!session) {
+        if (authError || !user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         const { data: existingShop } = await supabase
             .from('shops')
             .select('id')
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .single()
 
         if (existingShop) {
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         const { data: shop, error } = await supabase
             .from('shops')
             .insert({
-                user_id: session.user.id,
+                user_id: user.id,
                 name,
                 slug,
                 description,
@@ -107,9 +107,9 @@ export async function PATCH(request: NextRequest) {
             // @ts-expect-error - Next.js 15 cookie types
             cookies: () => cookieStore 
         })
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-        if (!session) {
+        if (authError || !user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
@@ -131,7 +131,7 @@ export async function PATCH(request: NextRequest) {
                 updated_at: new Date().toISOString()
             })
             .eq('id', id)
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .select()
             .single()
 

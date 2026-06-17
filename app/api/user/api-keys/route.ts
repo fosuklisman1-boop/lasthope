@@ -14,13 +14,13 @@ async function getAuthenticatedUserId(): Promise<{ userId: string } | { error: N
         // @ts-expect-error - auth-helpers types expect Promise but runtime needs synchronous object
         cookies: () => cookieStore
     })
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (sessionError || !session?.user) {
+    if (authError || !user) {
         return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
     }
 
-    return { userId: session.user.id }
+    return { userId: user.id }
 }
 
 // POST — create a new API key (returns the raw key once)

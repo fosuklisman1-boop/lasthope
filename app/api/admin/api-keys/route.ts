@@ -94,7 +94,7 @@ export async function PATCH(request: NextRequest) {
                 ? {
                       status: 'active',
                       approved_at: new Date().toISOString(),
-                      approved_by: auth.session.user.id
+                      approved_by: auth.userId
                   }
                 : { status: 'revoked' }
 

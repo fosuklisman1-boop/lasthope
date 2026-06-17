@@ -18,7 +18,10 @@ export async function POST(request: NextRequest) {
             .update(body)
             .digest('hex')
 
-        if (hash !== signature) {
+        const sigBuf = Buffer.from(signature || '', 'utf8')
+        const hashBuf = Buffer.from(hash, 'utf8')
+        const valid = hashBuf.length === sigBuf.length && crypto.timingSafeEqual(hashBuf, sigBuf)
+        if (!valid) {
             console.error('[PaystackWebhook] Invalid webhook signature')
             return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
         }

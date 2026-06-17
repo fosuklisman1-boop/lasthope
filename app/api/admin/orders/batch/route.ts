@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
         const { data: userData } = await supabase
             .from('users')
             .select('first_name')
-            .eq('id', auth.session.user.id)
+            .eq('id', auth.userId)
             .single()
 
         // 0. Check for existing batch with idempotency key
