@@ -40,6 +40,7 @@ const FILTERS: { value: string; label: string }[] = [
     { value: 'prices.*', label: 'Upgrade prices' },
     { value: 'settings.*', label: 'Settings' },
     { value: 'api_key.*', label: 'API keys' },
+    { value: 'webhook.*', label: 'Webhook deliveries' },
     { value: 'withdrawal.*', label: 'Withdrawals' },
     { value: 'complaint.*', label: 'Complaints' },
     { value: 'announcement.*', label: 'Announcements' },
@@ -52,7 +53,7 @@ function areaColor(action: string): string {
     const area = action.split('.')[0]
     if (area === 'wallet' || area === 'withdrawal' || area === 'payment') return 'var(--neon-amber)'
     if (area === 'order' || area === 'complaint') return 'var(--neon-cyan)'
-    if (area === 'user' || area === 'api_key') return 'var(--neon-violet)'
+    if (area === 'user' || area === 'api_key' || area === 'webhook') return 'var(--neon-violet)'
     if (area === 'system') return 'var(--neon-coral)'
     return 'var(--neon-mint)'
 }

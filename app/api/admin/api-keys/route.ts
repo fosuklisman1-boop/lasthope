@@ -60,6 +60,26 @@ export async function GET(request: NextRequest) {
             })
         }
 
+        // Last 7 days of usage per key (one query, summed here)
+        if (keys && keys.length > 0) {
+            const since = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
+            const { data: usage } = await (supabaseService as any)
+                .from('api_key_usage_daily')
+                .select('api_key_id, requests, errors, rate_limited')
+                .in('api_key_id', keys.map((k: any) => k.id))
+                .gte('day', since)
+            const totals: Record<string, { requests: number; errors: number; rateLimited: number }> = {}
+            for (const u of usage || []) {
+                const t = (totals[u.api_key_id] ||= { requests: 0, errors: 0, rateLimited: 0 })
+                t.requests += u.requests
+                t.errors += u.errors
+                t.rateLimited += u.rate_limited
+            }
+            keys.forEach((k: any) => {
+                k.usage7d = totals[k.id] || { requests: 0, errors: 0, rateLimited: 0 }
+            })
+        }
+
         return NextResponse.json({
             keys: keys || [],
             total: count ?? 0
@@ -86,8 +106,29 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: 'id is required' }, { status: 400 })
         }
 
-        if (!['approve', 'revoke'].includes(action)) {
-            return NextResponse.json({ error: "action must be 'approve' or 'revoke'" }, { status: 400 })
+        if (!['approve', 'revoke', 'set_limit'].includes(action)) {
+            return NextResponse.json({ error: "action must be 'approve', 'revoke' or 'set_limit'" }, { status: 400 })
+        }
+
+        if (action === 'set_limit') {
+            if (!Number.isInteger(rate_limit_per_min) || rate_limit_per_min < 1 || rate_limit_per_min > 10000) {
+                return NextResponse.json({ error: 'Rate limit must be a whole number between 1 and 10000' }, { status: 400 })
+            }
+            const { data: before } = await supabaseService.from('api_keys').select('rate_limit_per_min').eq('id', id).single()
+            const { error: limitError } = await supabaseService
+                .from('api_keys')
+                .update({ rate_limit_per_min } as any)
+                .eq('id', id)
+            if (limitError) return NextResponse.json({ error: limitError.message }, { status: 500 })
+
+            await logAudit(auth, {
+                action: 'api_key.limit',
+                targetType: 'api_key',
+                targetId: String(id),
+                summary: `Changed an API key's rate limit from ${(before as any)?.rate_limit_per_min ?? '?'} to ${rate_limit_per_min} requests/min`,
+                details: { from: (before as any)?.rate_limit_per_min, to: rate_limit_per_min },
+            }, request)
+            return NextResponse.json({ success: true })
         }
 
         const update: Record<string, any> =

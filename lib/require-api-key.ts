@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/supabase'
 import { checkRateLimit, getTrustedClientIp } from '@/lib/rate-limit'
 import { parseBearerKey, hashApiKey } from '@/lib/api-keys'
 import type { UserRole } from '@/lib/roles'
+import { rememberKey } from '@/lib/api-usage'
 
 export interface ApiKeyAuth {
   keyId: string
@@ -41,6 +42,7 @@ export async function requireApiKey(request: Request): Promise<ApiKeyAuth | Next
 
   if (lookupError) return err('Auth service unavailable', 'auth_unavailable', 503)
   if (!key || key.status !== 'active') return err('Invalid API key', 'unauthorized', 401)
+  rememberKey(request, key.id) // lets withApiUsage count this call once the status is known
 
   // 4. Load owner role + wallet.
   const { data: user, error: userError } = await (supabase.from('users') as any)

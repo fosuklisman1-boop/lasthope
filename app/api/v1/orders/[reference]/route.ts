@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
+import { withApiUsage } from '@/lib/api-usage'
 import { requireApiKey } from '@/lib/require-api-key'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: Request, { params }: { params: Promise<{ reference: string }> }) {
+async function handleGET(request: Request, { params }: { params: Promise<{ reference: string }> }) {
   const auth = await requireApiKey(request)
   if (auth instanceof NextResponse) return auth
   const { reference } = await params
@@ -17,3 +18,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ refe
     network: data.network, size: data.size, phone_number: data.phone_number, price: Number(data.price), created_at: data.created_at,
   })
 }
+
+export const GET = withApiUsage(handleGET)

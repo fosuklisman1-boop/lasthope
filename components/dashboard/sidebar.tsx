@@ -32,7 +32,8 @@ import {
     Code2,
     KeyRound,
     ScrollText,
-    Scale
+    Scale,
+    Webhook
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -60,6 +61,7 @@ const adminNavItems = [
     { href: '/admin/users', label: 'Users', icon: Users },
     { href: '/admin/packages', label: 'Packages', icon: Package },
     { href: '/admin/api-keys', label: 'API Keys', icon: KeyRound },
+    { href: '/admin/webhooks', label: 'Webhooks', icon: Webhook },
     { href: '/admin/complaints', label: 'Complaints', icon: MessageSquare },
     { href: '/admin/announcements', label: 'Announce', icon: Bell },
     { href: '/admin/sms-broadcast', label: 'SMS', icon: MessageSquare },

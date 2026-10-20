@@ -19,6 +19,7 @@ export const AUDIT_ACTIONS = [
     'api_key.approve',
     'api_key.revoke',
     'api_key.limit',
+    'webhook.manage',
     'withdrawal.update',
     'complaint.resolve',
     'settings.update',

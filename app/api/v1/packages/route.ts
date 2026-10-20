@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
+import { withApiUsage } from '@/lib/api-usage'
 import { requireApiKey } from '@/lib/require-api-key'
 import { getPriceForRole } from '@/lib/pricing'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const auth = await requireApiKey(request)
   if (auth instanceof NextResponse) return auth
   const { data, error } = await (auth.supabase.from('data_packages') as any)
@@ -17,3 +18,5 @@ export async function GET(request: Request) {
   }))
   return NextResponse.json({ data: out })
 }
+
+export const GET = withApiUsage(handleGET)

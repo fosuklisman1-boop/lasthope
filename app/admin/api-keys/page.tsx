@@ -37,6 +37,7 @@ type ApiKey = {
     last_used_at: string | null
     webhook_url: string | null
     users: { id: string; email: string } | null
+    usage7d?: { requests: number; errors: number; rateLimited: number }
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -125,20 +126,10 @@ export default function AdminApiKeysPage() {
             setActionLoading(id + 'rate')
             const key = keys.find((k) => k.id === id)
             if (!key) return
-            const action = key.status === 'active' ? 'approve' : key.status === 'pending' ? 'approve' : 'revoke'
-            // We always send the rate_limit update; to avoid a status side-effect for revoked keys
-            // we use a dedicated approach: we call PATCH with the current status-compatible action.
-            // For revoked keys, the status stays revoked — so we use the PATCH without an action side-effect.
-            // Since PATCH requires an action, we re-approve active keys and send rate limit.
-            // For revoked keys we simply notify the admin that rate limit can only be changed on active/pending keys.
-            if (key.status === 'revoked') {
-                toast.error('Cannot change rate limit on a revoked key. Approve it first.')
-                return
-            }
-
+            // 'set_limit' changes only the limit; it never approves or revokes the key.
             const body: Record<string, any> = {
                 id,
-                action: key.status === 'pending' ? 'approve' : 'approve',
+                action: 'set_limit',
                 rate_limit_per_min: value,
             }
 
@@ -287,6 +278,21 @@ export default function AdminApiKeysPage() {
                                         <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
                                             <Clock className="w-3.5 h-3.5 text-teal-500 flex-shrink-0" />
                                             <span>Last used {formatDate(apiKey.last_used_at)}</span>
+                                        </div>
+                                    )}
+                                    {apiKey.usage7d && (
+                                        <div className="neo-inset grid grid-cols-3 gap-2 rounded-xl p-3 text-center">
+                                            {[
+                                                ['Requests', apiKey.usage7d.requests],
+                                                ['Errors', apiKey.usage7d.errors],
+                                                ['Rate limited', apiKey.usage7d.rateLimited],
+                                            ].map(([label, n]) => (
+                                                <div key={label as string}>
+                                                    <p className="text-base font-bold">{(n as number).toLocaleString('en-GB')}</p>
+                                                    <p className="text-[11px] text-muted-foreground">{label}</p>
+                                                </div>
+                                            ))}
+                                            <p className="col-span-3 text-[11px] text-muted-foreground">Last 7 days</p>
                                         </div>
                                     )}
                                 </div>

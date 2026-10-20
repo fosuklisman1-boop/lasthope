@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
+import { withApiUsage } from '@/lib/api-usage'
 import { requireApiKey } from '@/lib/require-api-key'
 import { placeOrder } from '@/lib/orders'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const auth = await requireApiKey(request)
   if (auth instanceof NextResponse) return auth
   if (request.headers.get('content-type')?.includes('application/json') !== true)
@@ -16,3 +17,5 @@ export async function POST(request: Request) {
   if (!result.ok) return NextResponse.json({ error: result.message, code: result.code }, { status: result.httpStatus })
   return NextResponse.json({ reference: result.reference, status: result.status, price: result.price, network: result.network, size: result.size, currency: 'GHS' }, { status: 201 })
 }
+
+export const POST = withApiUsage(handlePOST)
