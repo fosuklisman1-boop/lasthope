@@ -138,7 +138,7 @@ export default function WebhookMonitorPage() {
     const pages = Math.max(1, Math.ceil(total / pageSize))
 
     return (
-        <div className="mx-auto max-w-4xl space-y-6">
+        <div className="dev-page mx-auto max-w-4xl space-y-6">
             <div>
                 <h1 className="text-2xl font-bold tracking-tight">Webhook deliveries</h1>
                 <p className="text-muted-foreground">Order updates sent to developers' servers. Retry the ones that failed.</p>

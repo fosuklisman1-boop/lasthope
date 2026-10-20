@@ -46,6 +46,7 @@ const FILTERS: { value: string; label: string }[] = [
     { value: 'announcement.*', label: 'Announcements' },
     { value: 'sms.*', label: 'SMS broadcasts' },
     { value: 'system.*', label: 'System' },
+    { value: 'security.*', label: 'Security' },
 ]
 
 // One neon colour per area, so the log can be scanned by eye.
@@ -54,7 +55,7 @@ function areaColor(action: string): string {
     if (area === 'wallet' || area === 'withdrawal' || area === 'payment') return 'var(--neon-amber)'
     if (area === 'order' || area === 'complaint') return 'var(--neon-cyan)'
     if (area === 'user' || area === 'api_key' || area === 'webhook') return 'var(--neon-violet)'
-    if (area === 'system') return 'var(--neon-coral)'
+    if (area === 'system' || area === 'security') return 'var(--neon-coral)'
     return 'var(--neon-mint)'
 }
 
@@ -183,7 +184,7 @@ export default function AuditLogPage() {
     }
 
     return (
-        <div className="mx-auto max-w-4xl space-y-6">
+        <div className="dev-page mx-auto max-w-4xl space-y-6">
             <div>
                 <h1 className="text-2xl font-bold tracking-tight">Audit log</h1>
                 <p className="text-muted-foreground">A record of what admins changed, who did it and when.</p>

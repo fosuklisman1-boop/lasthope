@@ -26,6 +26,7 @@ export const AUDIT_ACTIONS = [
     'sms.broadcast',
     'announcement.post',
     'system.maintenance',
+    'security.2fa',
 ] as const
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]

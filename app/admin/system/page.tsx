@@ -156,7 +156,7 @@ export default function SystemPage() {
     }
 
     return (
-        <div className="mx-auto max-w-4xl space-y-8">
+        <div className="dev-page mx-auto max-w-4xl space-y-8">
             <div>
                 <h1 className="text-2xl font-bold tracking-tight">System</h1>
                 <p className="text-muted-foreground">Payment switch, alerts and the health of scheduled jobs.</p>

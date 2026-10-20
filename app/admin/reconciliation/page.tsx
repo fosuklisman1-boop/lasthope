@@ -94,7 +94,7 @@ export default function ReconciliationPage() {
     const issues = report?.issues ?? []
 
     return (
-        <div className="mx-auto max-w-4xl space-y-6">
+        <div className="dev-page mx-auto max-w-4xl space-y-6">
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Payment reconciliation</h1>

@@ -71,7 +71,7 @@ export default function ResellersPage() {
     const shown = trend === 'all' ? rows : rows.filter(r => r.trend === trend)
 
     return (
-        <div className="mx-auto max-w-5xl space-y-6">
+        <div className="dev-page mx-auto max-w-5xl space-y-6">
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Resellers</h1>

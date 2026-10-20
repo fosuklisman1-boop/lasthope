@@ -54,7 +54,7 @@ function RevenueChart({ days }: { days: Day[] }) {
                 })}
                 <text x={0} y={H + 16} fontSize={11} fill="hsl(var(--muted-foreground))">{days[0]?.day}</text>
                 <text x={W} y={H + 16} fontSize={11} textAnchor="end" fill="hsl(var(--muted-foreground))">{days[days.length - 1]?.day}</text>
-                <text x={W} y={12} fontSize={11} textAnchor="end" fill="hsl(var(--muted-foreground))">{`Peak ${formatCurrency(max)}`}</text>
+                <text x={0} y={10} fontSize={11} fill="hsl(var(--muted-foreground))">{`Peak day ${formatCurrency(max)}`}</text>
             </svg>
         </figure>
     )
@@ -120,7 +120,7 @@ export default function ReportsPage() {
     const t = report?.totals
 
     return (
-        <div className="mx-auto max-w-5xl space-y-6">
+        <div className="dev-page mx-auto max-w-5xl space-y-6">
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Reports</h1>

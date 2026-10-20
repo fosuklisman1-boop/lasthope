@@ -36,7 +36,8 @@ import {
     Webhook,
     Activity,
     BarChart3,
-    Trophy
+    Trophy,
+    ShieldCheck
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -75,6 +76,7 @@ const adminNavItems = [
     { href: '/admin/reconciliation', label: 'Reconcile', icon: Scale },
     { href: '/admin/audit-log', label: 'Audit Log', icon: ScrollText },
     { href: '/admin/system', label: 'System', icon: Activity },
+    { href: '/admin/security', label: 'Security', icon: ShieldCheck },
     { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -327,7 +329,7 @@ export function DashboardSidebar() {
                             )}
                             {adminNavItems.filter(item => {
                                 if (isAdmin) return true
-                                if (isSubAdmin) return item.href === '/admin/orders'
+                                if (isSubAdmin) return item.href === '/admin/orders' || item.href === '/admin/security'
                                 return false
                             }).map((item) => {
                                 const isActive = isLinkActive(item.href)

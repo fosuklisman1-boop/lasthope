@@ -25,12 +25,22 @@ export default function AdminLayout({
                 router.push('/auth/login')
             } else if (!isAdmin && !isSubAdmin) {
                 router.push('/dashboard')
-            } else if (isSubAdmin && pathname && !pathname.startsWith('/admin/orders')) {
+            } else if (isSubAdmin && pathname && !pathname.startsWith('/admin/orders') && !pathname.startsWith('/admin/security')) {
                 // Redirect sub-admin to orders if they try to access other admin pages
                 router.push('/admin/orders')
             }
         }
     }, [user, isAdmin, isSubAdmin, isLoading, router, pathname])
+
+    useEffect(() => {
+        if (isLoading || !user || (!isAdmin && !isSubAdmin) || pathname?.startsWith('/admin/security')) return
+        let cancelled = false
+        fetch('/api/admin/security', { cache: 'no-store' })
+            .then(r => (r.ok ? r.json() : null))
+            .then(s => { if (!cancelled && s && s.gate !== 'allow') router.replace('/admin/security') })
+            .catch(() => undefined)
+        return () => { cancelled = true }
+    }, [user, isAdmin, isSubAdmin, isLoading, pathname, router])
 
     if (isLoading) {
         return (

@@ -139,7 +139,7 @@ export default function AdminUserDetailPage() {
     }
     if (error || !data) {
         return (
-            <div className="mx-auto max-w-lg space-y-4">
+            <div className="dev-page mx-auto max-w-lg space-y-4">
                 <Button variant="ghost" asChild><Link href="/admin/users"><ArrowLeft className="mr-2 h-4 w-4" />Back to users</Link></Button>
                 <Card><CardContent className="p-8 text-center text-muted-foreground">{error || 'User not found'}</CardContent></Card>
             </div>
