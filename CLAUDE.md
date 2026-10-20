@@ -135,7 +135,7 @@ admin** (e.g. via the admin orders page). There is no `triggerFulfillment`, no
 MTN/CodeCraft provider code (`lib/mtn-fulfillment.ts` / `lib/at-ishare-service.ts`
 deleted), and no `sync-mtn-status` / `sync-codecraft-status` cron routes.
 
-Remaining crons authenticate with `Authorization: Bearer ${CRON_SECRET}`. Only
+Remaining crons authenticate via `isCronAuthorized` (`lib/cron-auth.ts`): `Authorization: Bearer ${CRON_SECRET}` or `?key=${CRON_SECRET}`. Only
 `delete-old-orders` is registered in `vercel.json`; the rest
 (`verify-pending-payments`, cleanup jobs) are expected to be triggered by an
 external scheduler.

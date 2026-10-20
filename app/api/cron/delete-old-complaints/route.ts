@@ -1,12 +1,12 @@
 import { createServerClient } from '@/lib/supabase'
+import { isCronAuthorized } from "@/lib/cron-auth"
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
     try {
-        const authHeader = request.headers.get('authorization')
-        if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        if (!isCronAuthorized(request)) {
             return NextResponse.json(
                 { error: 'Unauthorized' },
                 { status: 401 }
