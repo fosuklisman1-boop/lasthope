@@ -34,7 +34,9 @@ import {
     ScrollText,
     Scale,
     Webhook,
-    Activity
+    Activity,
+    BarChart3,
+    Trophy
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -66,6 +68,8 @@ const adminNavItems = [
     { href: '/admin/complaints', label: 'Complaints', icon: MessageSquare },
     { href: '/admin/announcements', label: 'Announce', icon: Bell },
     { href: '/admin/sms-broadcast', label: 'SMS', icon: MessageSquare },
+    { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
+    { href: '/admin/resellers', label: 'Resellers', icon: Trophy },
     { href: '/admin/profits-history', label: 'Profits', icon: Wallet },
     { href: '/admin/withdrawals', label: 'Withdrawals', icon: History },
     { href: '/admin/reconciliation', label: 'Reconcile', icon: Scale },
