@@ -33,7 +33,8 @@ import {
     KeyRound,
     ScrollText,
     Scale,
-    Webhook
+    Webhook,
+    Activity
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -69,6 +70,7 @@ const adminNavItems = [
     { href: '/admin/withdrawals', label: 'Withdrawals', icon: History },
     { href: '/admin/reconciliation', label: 'Reconcile', icon: Scale },
     { href: '/admin/audit-log', label: 'Audit Log', icon: ScrollText },
+    { href: '/admin/system', label: 'System', icon: Activity },
     { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -81,6 +83,17 @@ export function DashboardSidebar() {
     const { isPageAccessible, loading: pageAccessLoading } = usePageAccess()
     const [isCollapsed, setIsCollapsed] = useState(false)
     const [walletBalance, setWalletBalance] = useState(0)
+    const [paymentMaintenance, setPaymentMaintenance] = useState(false)
+
+    // The admin can pause payments from the System page; check the live switch.
+    useEffect(() => {
+        let cancelled = false
+        fetch('/api/system/status', { cache: 'no-store' })
+            .then(r => (r.ok ? r.json() : null))
+            .then(s => { if (!cancelled && s) setPaymentMaintenance(!!s.paymentMaintenance) })
+            .catch(() => undefined)
+        return () => { cancelled = true }
+    }, [])
 
     // Fetch wallet balance
     useEffect(() => {
@@ -239,7 +252,7 @@ export function DashboardSidebar() {
                                     isResellerRole(dbUser?.role) ? "text-black" : "text-emerald-600 dark:text-emerald-400"
                                 )}>{formatCurrency(walletBalance)}</p>
                             </div>
-                            {!(process.env.NEXT_PUBLIC_PAYMENT_MAINTENANCE_MODE === 'true' && !isAdmin) && isPageAccessible('/dashboard/wallet') && (
+                            {!(paymentMaintenance && !isAdmin) && isPageAccessible('/dashboard/wallet') && (
                                 <Link href="/dashboard/wallet">
                                     <Button
                                         size="sm"

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withCronRun } from '@/lib/cron-runs'
 import { isCronAuthorized } from '@/lib/cron-auth'
 import { createServerClient } from '@/lib/supabase'
 import { deliverWebhook } from '@/lib/api-webhooks'
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic'
 const MAX_ATTEMPTS = 6
 const BACKOFF_SEC = [60, 300, 900, 3600, 10800, 21600] // 1m,5m,15m,1h,3h,6h
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   if (!isCronAuthorized(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = createServerClient()
   const nowIso = new Date().toISOString()
@@ -57,3 +58,5 @@ export async function GET(request: Request) {
   }
   return NextResponse.json({ processed: rows.length, delivered, failed, skipped })
 }
+
+export const GET = withCronRun('retry-webhooks', handleGET)

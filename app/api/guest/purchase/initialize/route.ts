@@ -3,11 +3,15 @@ import { createServerClient } from '@/lib/supabase'
 import { calculatePaystackFee, generateReferenceCode } from '@/lib/utils'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { getPriceForRole } from '@/lib/pricing'
+import { isPaymentMaintenance, MAINTENANCE_MESSAGE } from '@/lib/maintenance'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
 
 export async function POST(request: NextRequest) {
     try {
+        if (await isPaymentMaintenance()) {
+            return NextResponse.json({ error: MAINTENANCE_MESSAGE }, { status: 503 })
+        }
         // L4: throttle guest checkout initialization (payment-spam protection)
         const rateLimit = await checkRateLimit(`guest-purchase-init:${getClientIp(request)}`, 10, 60)
         if (!rateLimit.allowed) {

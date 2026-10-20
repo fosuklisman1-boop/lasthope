@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isPaymentMaintenance, MAINTENANCE_MESSAGE } from '@/lib/maintenance'
 import { createRouteClient } from '@/lib/supabase-server'
 import { createServerClient } from '@/lib/supabase'
 import { calculatePaystackFee, generateReferenceCode } from '@/lib/utils'
@@ -10,11 +11,8 @@ const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
 export async function POST(request: NextRequest) {
     try {
         // Check if payment system is under maintenance
-        if (process.env.NEXT_PUBLIC_PAYMENT_MAINTENANCE_MODE === 'true') {
-            return NextResponse.json(
-                { error: 'Payment system is currently under maintenance. Please try again later.' },
-                { status: 503 }
-            )
+        if (await isPaymentMaintenance()) {
+            return NextResponse.json({ error: MAINTENANCE_MESSAGE }, { status: 503 })
         }
 
         const supabase = createRouteClient()

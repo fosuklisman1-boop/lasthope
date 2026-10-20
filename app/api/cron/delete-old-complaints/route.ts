@@ -1,10 +1,11 @@
 import { createServerClient } from '@/lib/supabase'
+import { withCronRun } from '@/lib/cron-runs'
 import { isCronAuthorized } from "@/lib/cron-auth"
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
     try {
         if (!isCronAuthorized(request)) {
             return NextResponse.json(
@@ -40,3 +41,5 @@ export async function GET(request: Request) {
         )
     }
 }
+
+export const GET = withCronRun('delete-old-complaints', handleGET)

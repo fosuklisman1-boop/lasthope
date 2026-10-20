@@ -4,11 +4,15 @@ import { NextResponse } from 'next/server'
 import { generateReferenceCode } from '@/lib/utils'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { RESELLER_TIERS, isResellerRole } from '@/lib/roles'
+import { isPaymentMaintenance, MAINTENANCE_MESSAGE } from '@/lib/maintenance'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
 
 export async function POST(request: Request) {
     try {
+        if (await isPaymentMaintenance()) {
+            return NextResponse.json({ error: MAINTENANCE_MESSAGE }, { status: 503 })
+        }
         const cookieStore = await cookies()
         const supabase = createRouteHandlerClient({
             // @ts-expect-error - auth-helpers types expect Promise but runtime needs synchronous object

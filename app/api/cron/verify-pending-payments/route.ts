@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withCronRun } from '@/lib/cron-runs'
 import { isCronAuthorized } from "@/lib/cron-auth"
 import { createServerClient } from '@/lib/supabase'
 import { processCompletedWalletPayment } from '@/lib/payments'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
     // Verify cron secret
     if (!isCronAuthorized(request)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -79,3 +80,5 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }
+
+export const GET = withCronRun('verify-pending-payments', handleGET)
