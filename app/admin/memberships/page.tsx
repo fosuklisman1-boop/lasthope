@@ -120,7 +120,7 @@ export default function AdminMembershipsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Pricing Manager Card */}
                 <Card className="lg:col-span-1 shadow-xl border-amber-100 h-fit">
-                    <CardHeader className="bg-amber-50/50">
+                    <CardHeader className="bg-[hsl(var(--neon-amber)/0.12)]">
                         <CardTitle className="text-lg flex items-center gap-2">
                             <Plus className="w-5 h-5 text-amber-600" />
                             Upgrade Pricing
@@ -142,7 +142,7 @@ export default function AdminMembershipsPage() {
                             ))}
                         </div>
                         <Button
-                            className="w-full bg-slate-900 hover:bg-slate-800 h-12 text-base font-black"
+                            className="w-full bg-card hover:bg-accent h-12 text-base font-black"
                             onClick={handleSavePrices}
                             disabled={isSavingPrices}
                         >
@@ -192,7 +192,7 @@ export default function AdminMembershipsPage() {
                                 {/* Desktop Table View */}
                                 <div className="hidden md:block overflow-x-auto">
                                     <table className="w-full text-sm">
-                                        <thead className="bg-slate-50/50 text-slate-500 font-bold">
+                                        <thead className="bg-muted/50 text-slate-500 font-bold">
                                             <tr>
                                                 <th className="px-6 py-4 text-left">Agent</th>
                                                 <th className="px-6 py-4 text-left">Tier</th>

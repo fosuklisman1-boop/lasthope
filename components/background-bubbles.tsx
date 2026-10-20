@@ -45,7 +45,7 @@ export function BackgroundBubbles({ scrollable = false }: BackgroundBubblesProps
         )}>
             {/* Background Gradients */}
             <div className="absolute inset-0 bg-[#F8FAFC] dark:bg-[#020617] transition-colors duration-700" />
-            <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/50 via-white to-indigo-50/50 dark:from-blue-950/20 dark:via-slate-950 dark:to-indigo-950/20" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/50 via-white to-indigo-50/50 dark:from-blue-950/20 dark:via-background dark:to-indigo-950/20" />
 
             {/* Bubble Container */}
             <div className="absolute inset-0 opacity-40 dark:opacity-30">

@@ -632,7 +632,7 @@ export default function DataPackagesPage() {
                         {bulkInputType && (
                             <Card className="border-0 bg-transparent shadow-none animate-in fade-in slide-in-from-top-4 duration-500">
                                 <CardContent className="p-0 space-y-4">
-                                    <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-md lg:shadow-lg border border-gray-100 dark:border-zinc-800">
+                                    <div className="bg-white dark:bg-card rounded-3xl p-6 shadow-md lg:shadow-lg border border-gray-100 dark:border-border">
                                         <div className="space-y-4">
                                             <div className="space-y-1">
                                                 <Label className="text-[#E60000] font-black text-xs uppercase tracking-widest">Select Network</Label>
@@ -647,7 +647,7 @@ export default function DataPackagesPage() {
                                                                     (net === 'MTN' ? 'bg-[#FFCC00] text-black hover:bg-[#FFCC00]/90 border-0' :
                                                                         net === 'Telecel' ? 'bg-[#E60000] text-white hover:bg-[#E60000]/90 border-0' :
                                                                             'bg-[#0056B3] text-white hover:bg-[#0056B3]/90 border-0')
-                                                                    : 'bg-transparent border-gray-200 dark:border-zinc-700'
+                                                                    : 'bg-transparent border-gray-200 dark:border-border'
                                                             )}
                                                             onClick={() => setBulkNetwork(net)}
                                                             size="sm"
@@ -673,7 +673,7 @@ export default function DataPackagesPage() {
                                                         </div>
                                                         <textarea
                                                             ref={textareaRef}
-                                                            className="w-full min-h-[120px] rounded-2xl border-2 border-gray-50 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-800/50 pl-10 pr-4 py-3 text-[11px] leading-tight text-black dark:text-white placeholder:text-gray-300 dark:placeholder:text-zinc-600 focus:outline-none focus:border-[#FFCE00] transition-colors font-mono font-bold resize-none overflow-hidden"
+                                                            className="w-full min-h-[120px] rounded-2xl border-2 border-gray-50 dark:border-border bg-muted/50 dark:bg-secondary/50 pl-10 pr-4 py-3 text-[11px] leading-tight text-black dark:text-white placeholder:text-gray-300 dark:placeholder:text-zinc-600 focus:outline-none focus:border-[#FFCE00] transition-colors font-mono font-bold resize-none overflow-hidden"
                                                             placeholder={`0246677889 2\n0546627266 3`}
                                                             value={bulkText}
                                                             onChange={(e) => setBulkText(e.target.value)}
@@ -706,7 +706,7 @@ export default function DataPackagesPage() {
                                                     </div>
 
                                                     <div
-                                                        className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl p-8 text-center bg-gray-50/30 dark:bg-zinc-800/30 hover:bg-gray-50/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer relative"
+                                                        className="border-2 border-dashed border-gray-200 dark:border-border rounded-2xl p-8 text-center bg-muted/30 dark:bg-secondary/30 hover:bg-gray-50/50 dark:hover:bg-accent/50 transition-colors cursor-pointer relative"
                                                         onClick={() => document.getElementById('excel-upload')?.click()}
                                                     >
                                                         <input
@@ -717,7 +717,7 @@ export default function DataPackagesPage() {
                                                             onChange={handleFileChange}
                                                         />
                                                         <div className="flex flex-col items-center gap-2">
-                                                            <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-gray-100 dark:border-zinc-800">
+                                                            <div className="p-3 bg-white dark:bg-card rounded-xl shadow-sm border border-gray-100 dark:border-border">
                                                                 <Upload className="w-5 h-5 text-[#FFCE00]" />
                                                             </div>
                                                             <p className="text-xs font-bold text-black dark:text-white">
@@ -754,7 +754,7 @@ export default function DataPackagesPage() {
                                     {/* Validation Results */}
                                     {validationResults.length > 0 && (
                                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                            <div className="bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden shadow-lg border border-gray-100 dark:border-zinc-800">
+                                            <div className="bg-white dark:bg-card rounded-3xl overflow-hidden shadow-lg border border-gray-100 dark:border-border">
                                                 <div className="bg-[#FFCE00] px-6 py-4 flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <div className="bg-white/20 p-1 rounded-lg">
@@ -784,7 +784,7 @@ export default function DataPackagesPage() {
 
                                                 <div className="max-h-[300px] overflow-y-auto">
                                                     <table className="w-full text-xs">
-                                                        <thead className="bg-gray-50/50 dark:bg-zinc-800/50 border-b border-gray-100 dark:border-zinc-800 sticky top-0 z-10">
+                                                        <thead className="bg-muted/50 dark:bg-secondary/50 border-b border-gray-100 dark:border-border sticky top-0 z-10">
                                                             <tr>
                                                                 <th className="px-6 py-3 text-left font-black text-gray-400">STATUS</th>
                                                                 <th className="px-6 py-3 text-left font-black text-gray-400">RECIPIENT</th>
@@ -795,7 +795,7 @@ export default function DataPackagesPage() {
                                                         </thead>
                                                         <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
                                                             {validationResults.map((res, i) => (
-                                                                <tr key={i} className="group hover:bg-gray-50/50 dark:hover:bg-zinc-800/50 transition-colors">
+                                                                <tr key={i} className="group hover:bg-gray-50/50 dark:hover:bg-accent/50 transition-colors">
                                                                     <td className="px-6 py-4">
                                                                         <div className={cn(
                                                                             "w-2 h-2 rounded-full",
@@ -1000,7 +1000,7 @@ export default function DataPackagesPage() {
                                                 <Button
                                                     className={`w-full rounded-t-none rounded-b-xl h-12 text-md font-bold uppercase tracking-widest border-0 rounded-none transition-colors shadow-none ${pkg.network === 'MTN' ? 'bg-[#1a1a1a] text-white hover:bg-black' :
                                                         pkg.network === 'Telecel' ? 'bg-white text-[#E60000] hover:bg-gray-100' :
-                                                            'bg-white text-[#0056B3] hover:bg-gray-100'
+                                                            'bg-white text-primary hover:bg-gray-100'
                                                         }`}
                                                     onClick={() => handlePurchaseClick(pkg)}
                                                 >
@@ -1021,7 +1021,7 @@ export default function DataPackagesPage() {
                                         return 'bg-[#FFFFFF] text-[#E60000] hover:bg-gray-100 border-0 shadow-md hover:shadow-lg transition-all hover:scale-105 font-bold px-6'
                                     }
                                     if (pkg.network.startsWith('AT')) {
-                                        return 'bg-[#FFFFFF] text-[#0056B3] hover:bg-gray-100 border-0 shadow-md hover:shadow-lg transition-all hover:scale-105 font-bold px-6'
+                                        return 'bg-[#FFFFFF] text-primary hover:bg-gray-100 border-0 shadow-md hover:shadow-lg transition-all hover:scale-105 font-bold px-6'
                                     }
                                     return 'bg-[#1a1a1a] text-white hover:bg-black border-0 shadow-md hover:shadow-lg transition-all hover:scale-105 font-bold px-6'
                                 }

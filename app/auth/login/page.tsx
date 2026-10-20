@@ -57,7 +57,7 @@ export default function LoginPage() {
                 <div className="text-center mb-6">
                     <Link href="/" className="inline-flex flex-col items-center">
                         <div className="relative w-20 h-20 sm:w-24 sm:h-24 mb-3">
-                            <div className="w-full h-full rounded-2xl bg-slate-900 flex items-center justify-center shadow-xl">
+                            <div className="w-full h-full rounded-2xl bg-card flex items-center justify-center shadow-xl">
                                 <Image
                                     src="/logo.png"
                                     alt="LASTHOPE"
@@ -179,7 +179,7 @@ export default function LoginPage() {
                             </Button>
                         </div>
 
-                        <div className="mt-5 border-t border-slate-300/50 pt-4">
+                        <div className="mt-5 border-t border-border pt-4">
                             <div className="space-y-2">
                                 <p className="text-xs font-semibold text-slate-700 text-center">Join Our Community</p>
                                 <div className="grid grid-cols-2 gap-2">

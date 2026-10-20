@@ -97,7 +97,7 @@ export default function OrderSummaryPage() {
 
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-slate-50">
+            <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
                 <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
                 <p className="text-muted-foreground animate-pulse">Loading order details...</p>
             </div>
@@ -106,7 +106,7 @@ export default function OrderSummaryPage() {
 
     if (!order) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-slate-50">
+            <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
                 <AlertCircle className="w-16 h-16 text-muted-foreground mb-4" />
                 <h1 className="text-2xl font-bold">Order Not Found</h1>
                 <p className="text-muted-foreground mt-2">We couldn't find an order with this reference.</p>
@@ -118,7 +118,7 @@ export default function OrderSummaryPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 py-12 px-4 md:px-6">
+        <div className="min-h-screen bg-background py-12 px-4 md:px-6">
             <div className="max-w-xl mx-auto space-y-6">
                 <div className="flex items-center justify-between">
                     <Button variant="ghost" size="sm" onClick={() => router.back()}>

@@ -738,7 +738,7 @@ export default function AdminOrdersPage() {
         }, [batch.network, batchOrders])
 
         return (
-            <Card className="group relative overflow-hidden border-muted/40 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-auto min-h-[300px] max-h-[600px] bg-gradient-to-br from-white to-slate-50 dark:from-slate-950 dark:to-slate-900/50 dark:border-blue-900/20">
+            <Card className="group relative overflow-hidden border-muted/40 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-auto min-h-[300px] max-h-[600px] bg-gradient-to-br from-white to-muted dark:from-background dark:to-background/50 dark:border-blue-900/20">
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-200%] group-hover:animate-shine pointer-events-none" />
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 flex-shrink-0">
                     <div className="flex flex-col overflow-hidden">
@@ -1025,7 +1025,7 @@ export default function AdminOrdersPage() {
                                     </CardHeader>
                                     <CardContent className="space-y-4 pt-4">
                                         <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-secondary flex items-center justify-center flex-shrink-0">
                                                 <User className="w-4 h-4 text-slate-500" />
                                             </div>
                                             <div>

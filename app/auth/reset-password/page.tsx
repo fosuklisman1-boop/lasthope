@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
                     <p className="text-slate-500 font-medium">No worries! We'll help you get back in.</p>
                 </div>
 
-                <Card className="w-full border-0 bg-[#EEEEEE]/30 backdrop-blur-md shadow-2xl rounded-2xl overflow-hidden">
+                <Card className="w-full overflow-hidden">
                     <CardContent className="p-5 sm:p-6">
                         {!success ? (
                             <form onSubmit={handleSubmit} className="space-y-4">
@@ -77,7 +77,7 @@ export default function ResetPasswordPage() {
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
                                             required
-                                            className="h-12 pl-11 bg-white/95 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-[#0056B3] focus:ring-[#0056B3]/20 rounded-xl text-base"
+                                            className="h-12 pl-11 text-base"
                                         />
                                     </div>
                                     <p className="text-xs text-slate-500 pt-1 px-1">
@@ -88,7 +88,7 @@ export default function ResetPasswordPage() {
                                 <Button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto h-12 text-base font-bold bg-sky-500 hover:bg-sky-600 text-white shadow-lg rounded-xl"
+                                    className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto h-12 text-base font-bold "
                                 >
                                     {isLoading ? (
                                         <>
@@ -112,10 +112,10 @@ export default function ResetPasswordPage() {
                             </div>
                         )}
 
-                        <div className="mt-6 border-t border-slate-300/50 pt-4 text-center">
+                        <div className="mt-6 border-t border-border pt-4 text-center">
                             <Link
                                 href="/auth/login"
-                                className="inline-flex items-center text-sm font-semibold text-[#0056B3] hover:text-[#004494] transition-colors"
+                                className="inline-flex items-center text-sm font-semibold text-primary hover:text-[#004494] transition-colors"
                             >
                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                 Back to Sign In

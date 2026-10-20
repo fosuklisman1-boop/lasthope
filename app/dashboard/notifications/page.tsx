@@ -226,7 +226,7 @@ export default function NotificationsPage() {
                         <Card
                             key={notification.id}
                             className={`transition-all ${!notification.is_read
-                                ? 'bg-blue-50/50 dark:bg-blue-950/20 border-l-4 border-l-blue-500'
+                                ? 'bg-[hsl(var(--neon-cyan)/0.12)] dark:bg-blue-950/20 border-l-4 border-l-blue-500'
                                 : ''
                                 }`}
                         >

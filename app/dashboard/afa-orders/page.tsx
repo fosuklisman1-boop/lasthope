@@ -232,7 +232,7 @@ export default function AFAOrdersPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <Card className="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border-yellow-200 dark:border-yellow-800">
+                <Card className="bg-gradient-to-br from-[hsl(var(--neon-amber)/0.12)] to-[hsl(var(--neon-amber)/0.12)] dark:from-yellow-900/20 dark:to-amber-900/20 border-yellow-200 dark:border-yellow-800">
                     <CardContent className="p-6">
                         <div className="grid grid-cols-2 gap-4">
                             <div>

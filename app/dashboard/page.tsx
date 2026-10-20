@@ -335,7 +335,7 @@ export default function DashboardPage() {
                     <CardContent>
                         <div id="data-packages" className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <Link href="/dashboard/data-packages">
-                                <div className="p-4 rounded-xl bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 border border-yellow-200 dark:border-yellow-800 lg:hover:shadow-lg transition-all cursor-pointer group">
+                                <div className="p-4 rounded-xl bg-gradient-to-br from-[hsl(var(--neon-amber)/0.12)] to-[hsl(var(--neon-amber)/0.12)] dark:from-yellow-900/20 dark:to-yellow-800/20 border border-yellow-200 dark:border-yellow-800 lg:hover:shadow-lg transition-all cursor-pointer group">
                                     <div className="w-10 h-10 rounded-lg bg-yellow-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                                         <Package className="w-5 h-5 text-white" />
                                     </div>
@@ -344,7 +344,7 @@ export default function DashboardPage() {
                                 </div>
                             </Link>
                             <Link href="/dashboard/my-orders">
-                                <div id="order-history" className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800 lg:hover:shadow-lg transition-all cursor-pointer group">
+                                <div id="order-history" className="p-4 rounded-xl bg-gradient-to-br from-[hsl(var(--neon-cyan)/0.12)] to-[hsl(var(--neon-cyan)/0.12)] dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800 lg:hover:shadow-lg transition-all cursor-pointer group">
                                     <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                                         <ShoppingCart className="w-5 h-5 text-white" />
                                     </div>
@@ -353,7 +353,7 @@ export default function DashboardPage() {
                                 </div>
                             </Link>
                             <Link href="/dashboard/wallet">
-                                <div className="p-4 rounded-xl bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border border-green-200 dark:border-green-800 hover:shadow-lg transition-all cursor-pointer group">
+                                <div className="p-4 rounded-xl bg-gradient-to-br from-[hsl(var(--neon-mint)/0.12)] to-[hsl(var(--neon-mint)/0.12)] dark:from-green-900/20 dark:to-green-800/20 border border-green-200 dark:border-green-800 hover:shadow-lg transition-all cursor-pointer group">
                                     <div className="w-10 h-10 rounded-lg bg-green-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                                         <Wallet className="w-5 h-5 text-white" />
                                     </div>
@@ -362,7 +362,7 @@ export default function DashboardPage() {
                                 </div>
                             </Link>
                             <Link href="/dashboard/complaints">
-                                <div id="complaint-button" className="p-4 rounded-xl bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border border-red-200 dark:border-red-800 hover:shadow-lg transition-all cursor-pointer group">
+                                <div id="complaint-button" className="p-4 rounded-xl bg-gradient-to-br from-[hsl(var(--neon-coral)/0.12)] to-[hsl(var(--neon-coral)/0.12)] dark:from-red-900/20 dark:to-red-800/20 border border-red-200 dark:border-red-800 hover:shadow-lg transition-all cursor-pointer group">
                                     <div className="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                                         <AlertCircle className="w-5 h-5 text-white" />
                                     </div>

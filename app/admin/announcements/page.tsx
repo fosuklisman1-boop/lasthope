@@ -257,7 +257,7 @@ export default function AdminAnnouncementsPage() {
                                 announcements.map((announcement) => (
                                     <div
                                         key={announcement.id}
-                                        className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+                                        className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-border bg-gray-50 dark:bg-secondary/50"
                                     >
                                         {editingId === announcement.id ? (
                                             <div className="space-y-3">
@@ -320,7 +320,7 @@ export default function AdminAnnouncementsPage() {
                                                         {announcement.is_active ? 'Active' : 'Inactive'}
                                                     </Badge>
                                                 </div>
-                                                <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+                                                <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-border">
                                                     <div className="flex items-center gap-2">
                                                         <Switch
                                                             checked={announcement.is_active}

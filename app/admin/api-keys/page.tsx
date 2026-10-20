@@ -208,7 +208,7 @@ export default function AdminApiKeysPage() {
                     {keys.map((apiKey) => (
                         <Card
                             key={apiKey.id}
-                            className="relative overflow-hidden border border-purple-100 dark:border-purple-900/30 transition-all duration-200 shadow-md bg-white dark:bg-slate-900/50"
+                            className="relative overflow-hidden border border-purple-100 dark:border-purple-900/30 transition-all duration-200 shadow-md bg-white dark:bg-card/50"
                         >
                             <CardContent className="p-6 space-y-4">
                                 {/* Header row */}
@@ -292,7 +292,7 @@ export default function AdminApiKeysPage() {
                                 </div>
 
                                 {/* Rate limit editor */}
-                                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <div className="pt-2 border-t border-slate-100 dark:border-border">
                                     <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
                                         <Gauge className="w-3.5 h-3.5" />
                                         Rate limit (req/min)

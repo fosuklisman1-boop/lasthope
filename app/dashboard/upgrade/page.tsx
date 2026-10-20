@@ -16,35 +16,35 @@ import { HelpButton } from '@/components/tutorial/HelpButton'
 // Per-tier card styling
 const TIER_STYLE: Record<string, { color: string; buttonClass: string; badgeColor: string; priceColor: string; bgClass: string; popular: boolean }> = {
     'agent': {
-        color: 'border-[#C0C0C0]',
-        buttonClass: 'bg-gradient-to-r from-gray-300 to-gray-400 hover:from-gray-400 hover:to-gray-500 text-gray-800 shadow-sm',
-        badgeColor: 'from-gray-300 to-gray-400',
-        priceColor: 'text-gray-600',
-        bgClass: 'bg-slate-50',
+        color: 'border-white/15',
+        buttonClass: 'bg-[hsl(var(--secondary))] hover:brightness-125 text-foreground',
+        badgeColor: 'from-slate-500 to-slate-600',
+        priceColor: 'text-foreground',
+        bgClass: 'bg-card',
         popular: false,
     },
     'super-agent': {
-        color: 'border-[#FFCE00] ring-2 ring-[#FFCE00]/30',
-        buttonClass: 'bg-[#FFCE00] hover:bg-[#E6B800] text-black shadow-lg shadow-[#FFCE00]/20',
+        color: 'border-[hsl(var(--neon-amber)/0.55)] shadow-[0_0_34px_hsl(var(--neon-amber)/0.16)]',
+        buttonClass: 'bg-[hsl(var(--neon-amber))] hover:brightness-110 text-[hsl(35_80%_8%)]',
         badgeColor: 'from-[#FFCE00] to-[#E6B800]',
-        priceColor: 'text-amber-600',
-        bgClass: 'bg-amber-50',
+        priceColor: 'text-[hsl(var(--neon-amber))]',
+        bgClass: 'bg-card',
         popular: true,
     },
     'premium-agent': {
-        color: 'border-[#0EA5E9] ring-2 ring-[#0EA5E9]/30',
-        buttonClass: 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 shadow-lg shadow-sky-500/30',
+        color: 'border-[hsl(var(--neon-cyan)/0.55)] shadow-[0_0_34px_hsl(var(--neon-cyan)/0.16)]',
+        buttonClass: 'bg-[hsl(var(--neon-cyan))] hover:brightness-110 text-[hsl(200_80%_8%)]',
         badgeColor: 'from-sky-500 to-blue-600',
-        priceColor: 'text-sky-600',
-        bgClass: 'bg-sky-50',
+        priceColor: 'text-[hsl(var(--neon-cyan))]',
+        bgClass: 'bg-card',
         popular: false,
     },
     'dealer': {
-        color: 'border-purple-400 ring-2 ring-purple-400/30',
-        buttonClass: 'bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-700 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-800 shadow-lg shadow-purple-500/30',
+        color: 'border-[hsl(var(--neon-violet)/0.55)] shadow-[0_0_34px_hsl(var(--neon-violet)/0.16)]',
+        buttonClass: 'bg-[hsl(var(--neon-violet))] hover:brightness-110 text-[hsl(252_80%_8%)]',
         badgeColor: 'from-purple-600 to-indigo-700',
-        priceColor: 'text-purple-600',
-        bgClass: 'bg-purple-50',
+        priceColor: 'text-[hsl(var(--neon-violet))]',
+        bgClass: 'bg-card',
         popular: false,
     },
 }
@@ -182,7 +182,7 @@ export default function UpgradePage() {
 
     if (isLoading || isVerifying) {
         return (
-            <div className="fixed inset-0 bg-[#FFCE00] flex items-center justify-center z-50 p-6">
+            <div className="fixed inset-0 bg-background flex items-center justify-center z-50 p-6">
                 <div className="flex flex-col items-center gap-6 max-w-sm w-full">
                     <div className="relative">
                         <Crown className="w-16 h-16 text-yellow-600 animate-bounce relative z-10" />
@@ -231,7 +231,7 @@ export default function UpgradePage() {
                 />
             )}
 
-            <div className="relative -m-4 sm:-m-6 min-h-[calc(100vh+2rem)] lg:min-h-screen bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 overflow-x-hidden selection:bg-yellow-200 px-4 sm:px-6 py-10 sm:py-16 flex flex-col items-center scroll-smooth" style={{ fontFamily: '"Fira Sans", sans-serif' }}>
+            <div className="relative -m-4 sm:-m-6 min-h-[calc(100vh+2rem)] lg:min-h-screen overflow-x-hidden selection:bg-primary/30 px-4 sm:px-6 py-10 sm:py-16 flex flex-col items-center scroll-smooth" style={{ fontFamily: '"Fira Sans", sans-serif' }}>
 
                 <div className="relative z-10 w-full max-w-6xl flex flex-col items-center">
 
@@ -244,11 +244,11 @@ export default function UpgradePage() {
 
                         <div className="mb-4 sm:mb-6 flex justify-center">
                             <div className="relative">
-                                <Crown className="w-20 h-20 sm:w-28 sm:h-28 text-black animate-[bounce_2s_infinite] drop-shadow-xl" />
+                                <Crown className="w-20 h-20 sm:w-28 sm:h-28 text-[hsl(var(--neon-amber))] animate-[bounce_2s_infinite] drop-shadow-[0_0_22px_hsl(var(--neon-amber)/0.55)]" />
                             </div>
                         </div>
 
-                        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-[#b45309] leading-tight">
+                        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-foreground leading-tight">
                             <span className="relative inline-block">
                                 <span className="relative">
                                     U
@@ -276,7 +276,7 @@ export default function UpgradePage() {
                                 <div
                                     key={tier}
                                     className={cn(
-                                        "relative rounded-2xl p-6 flex flex-col transition-all duration-500 shadow-xl border-2",
+                                        "neo-raised relative rounded-[1.75rem] p-6 flex flex-col transition-all duration-500 border",
                                         style.bgClass,
                                         style.color,
                                         style.popular ? 'md:scale-105 z-10' : 'opacity-95'
@@ -291,7 +291,7 @@ export default function UpgradePage() {
                                     </div>
 
                                     <div className="text-center mb-5 space-y-1">
-                                        <h3 className="text-xl sm:text-2xl font-black text-gray-900 border-b-2 border-yellow-50/50 pb-2">{config.label}</h3>
+                                        <h3 className="text-xl sm:text-2xl font-black text-foreground border-b border-white/10 pb-2">{config.label}</h3>
                                         <p className="text-gray-400 text-xs sm:text-sm font-bold pt-1">One-time upgrade</p>
                                     </div>
 
@@ -332,7 +332,7 @@ export default function UpgradePage() {
                                     <Button
                                         onClick={() => startUpgrade(tier as UserRole)}
                                         disabled={isProcessing !== null || !hasPrice}
-                                        className={`w-full h-11 sm:h-12 rounded-xl text-sm sm:text-base font-black transition-all active:scale-95 text-white ${style.buttonClass}`}
+                                        className={`clay w-full h-11 sm:h-12 rounded-xl text-sm sm:text-base font-black transition-all active:translate-y-px text-white ${style.buttonClass}`}
                                     >
                                         {isProcessing === tier ? (
                                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -347,8 +347,8 @@ export default function UpgradePage() {
 
                     {/* Secure Badge Section */}
                     <div className="w-full max-w-3xl">
-                        <div className="bg-white/60 backdrop-blur-xl rounded-2xl p-6 sm:p-10 border-2 shadow-[0_8px_30px_rgba(238,238,238,0.8)] flex flex-col items-center text-center space-y-6" style={{ borderColor: '#EEEEEE' }}>
-                            <div className="inline-flex items-center gap-2 text-amber-600 bg-yellow-100/50 px-4 py-1.5 rounded-full border border-yellow-200/50">
+                        <div className="neo-raised rounded-[1.75rem] p-6 sm:p-10 border border-white/[0.05] flex flex-col items-center text-center space-y-6">
+                            <div className="inline-flex items-center gap-2 text-amber-600 bg-[hsl(var(--neon-amber)/0.12)] px-4 py-1.5 rounded-full border border-[hsl(var(--neon-amber)/0.30)]">
                                 <Zap className="w-5 h-5 fill-current" />
                                 <span className="text-xs font-black uppercase tracking-[0.2em]">FAST & SECURE</span>
                             </div>

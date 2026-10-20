@@ -42,7 +42,7 @@ export default function GuestOrderStatusPage() {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="w-10 h-10 animate-spin text-[#0056B3]" />
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
             </div>
         )
     }
@@ -79,7 +79,7 @@ export default function GuestOrderStatusPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
             <Card className="max-w-md w-full shadow-2xl overflow-hidden border-slate-200">
                 <div className="h-2 bg-gradient-to-r from-[#0056B3] to-[#00B4D8]" />
                 <CardHeader className="text-center pb-2">
@@ -108,7 +108,7 @@ export default function GuestOrderStatusPage() {
                         <div className="flex justify-between items-center pt-2">
                             <span className="text-slate-500 text-xs uppercase font-bold tracking-wider">Amount</span>
                             <div className="text-right">
-                                <span className="block text-xl font-black text-[#0056B3]">{formatCurrency(order.price)}</span>
+                                <span className="block text-xl font-black text-primary">{formatCurrency(order.price)}</span>
                                 <Badge variant={order.payment_status === 'paid' ? 'default' : 'destructive'} className="mt-1">
                                     {order.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
                                 </Badge>

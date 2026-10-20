@@ -107,7 +107,7 @@ export default function SignupPage() {
             <div className="relative min-h-screen w-full flex flex-col items-center justify-center px-4 py-8 sm:py-10 overflow-y-auto">
                 <BackgroundBubbles scrollable />
                 <FloatingWhatsApp variant="auth" />
-                <Card className="w-full max-w-[380px] sm:max-w-md border-0 bg-[#E5E7EB]/70 backdrop-blur-md relative z-10 shadow-2xl rounded-2xl">
+                <Card className="w-full max-w-[380px] sm:max-w-md relative z-10">
                     <CardContent className="pt-8 text-center p-6">
                         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mx-auto mb-4">
                             <Mail className="w-8 h-8 text-white" />
@@ -136,7 +136,7 @@ export default function SignupPage() {
                 <div className="text-center mb-5">
                     <Link href="/" className="inline-flex flex-col items-center">
                         <div className="relative w-18 h-18 sm:w-20 sm:h-20 mb-2">
-                            <div className="w-full h-full rounded-2xl bg-slate-900 flex items-center justify-center shadow-xl">
+                            <div className="w-full h-full rounded-2xl bg-card flex items-center justify-center shadow-xl">
                                 <Image
                                     src="/logo.png"
                                     alt="LASTHOPE"
@@ -155,7 +155,7 @@ export default function SignupPage() {
                     </Link>
                 </div>
 
-                <Card className="w-full border-0 bg-[#EEEEEE]/30 backdrop-blur-md shadow-2xl rounded-2xl overflow-hidden">
+                <Card className="w-full overflow-hidden">
                     <CardContent className="p-5 sm:p-6">
                         <form onSubmit={handleSubmit} className="space-y-3.5">
                             {error && (
@@ -176,7 +176,7 @@ export default function SignupPage() {
                                             value={formData.firstName}
                                             onChange={handleChange}
                                             required
-                                            className="h-11 pl-11 bg-white/95 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-[#0056B3] focus:ring-[#0056B3]/20 rounded-xl text-base"
+                                            className="h-11 pl-11 text-base"
                                         />
                                     </div>
                                 </div>
@@ -191,7 +191,7 @@ export default function SignupPage() {
                                             value={formData.lastName}
                                             onChange={handleChange}
                                             required
-                                            className="h-11 pl-11 bg-white/95 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-[#0056B3] focus:ring-[#0056B3]/20 rounded-xl text-base"
+                                            className="h-11 pl-11 text-base"
                                         />
                                     </div>
                                 </div>
@@ -209,7 +209,7 @@ export default function SignupPage() {
                                         value={formData.email}
                                         onChange={handleChange}
                                         required
-                                        className="h-11 pl-11 bg-white/95 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-[#0056B3] focus:ring-[#0056B3]/20 rounded-xl text-base"
+                                        className="h-11 pl-11 text-base"
                                     />
                                 </div>
                             </div>
@@ -226,7 +226,7 @@ export default function SignupPage() {
                                         value={formData.phoneNumber}
                                         onChange={handleChange}
                                         required
-                                        className="h-11 pl-11 bg-white/95 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-[#0056B3] focus:ring-[#0056B3]/20 rounded-xl text-base"
+                                        className="h-11 pl-11 text-base"
                                     />
                                 </div>
                             </div>
@@ -243,7 +243,7 @@ export default function SignupPage() {
                                         value={formData.password}
                                         onChange={handleChange}
                                         required
-                                        className="h-11 pl-11 pr-11 bg-white/95 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-[#0056B3] focus:ring-[#0056B3]/20 rounded-xl text-base"
+                                        className="h-11 pl-11 pr-11 text-base"
                                     />
                                     <button
                                         type="button"
@@ -267,7 +267,7 @@ export default function SignupPage() {
                                         value={formData.confirmPassword}
                                         onChange={handleChange}
                                         required
-                                        className="h-11 pl-11 pr-11 bg-white/95 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-[#0056B3] focus:ring-[#0056B3]/20 rounded-xl text-base"
+                                        className="h-11 pl-11 pr-11 text-base"
                                     />
                                     <button
                                         type="button"
@@ -282,7 +282,7 @@ export default function SignupPage() {
                             <Button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto h-12 text-base font-bold bg-sky-500 hover:bg-sky-600 text-white shadow-lg rounded-xl mt-1"
+                                className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto h-12 text-base font-bold  mt-1"
                             >
                                 {isLoading ? (
                                     <>
@@ -299,9 +299,9 @@ export default function SignupPage() {
                         </form>
 
                         <div className="flex items-center my-4">
-                            <div className="flex-1 h-px bg-slate-300/60"></div>
+                            <div className="flex-1 h-px bg-border"></div>
                             <span className="px-3 text-sm text-slate-500">OR</span>
-                            <div className="flex-1 h-px bg-slate-300/60"></div>
+                            <div className="flex-1 h-px bg-border"></div>
                         </div>
 
                         <div className="text-center space-y-3 mt-4">
@@ -311,7 +311,7 @@ export default function SignupPage() {
                             <Button
                                 asChild
                                 variant="default"
-                                className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto h-12 text-base font-bold bg-sky-500 hover:bg-sky-600 text-white shadow-lg rounded-xl flex items-center justify-center"
+                                className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto h-12 text-base font-bold  flex items-center justify-center"
                             >
                                 <Link href="/auth/login">
                                     Sign In
@@ -319,7 +319,7 @@ export default function SignupPage() {
                             </Button>
                         </div>
 
-                        <div className="mt-4 border-t border-slate-300/50 pt-4">
+                        <div className="mt-4 border-t border-border pt-4">
                             <div className="space-y-2">
                                 <p className="text-xs font-semibold text-slate-700 text-center">Join Our Community</p>
                                 <div className="grid grid-cols-2 gap-2">

@@ -346,7 +346,7 @@ export default function AdminUsersPage() {
                         {Array.isArray(users) && users.map((user) => (
                             <Card
                                 key={user.id}
-                                className="group relative overflow-hidden border border-purple-100 dark:border-purple-900/30 lg:hover:border-purple-500/50 transition-all duration-200 shadow-md lg:hover:shadow-xl lg:hover:-translate-y-1 bg-white dark:bg-slate-900/50"
+                                className="group relative overflow-hidden border border-purple-100 dark:border-purple-900/30 lg:hover:border-purple-500/50 transition-all duration-200 shadow-md lg:hover:shadow-xl lg:hover:-translate-y-1 bg-white dark:bg-card/50"
                             >
                                 <div className="absolute top-0 right-0 p-4 opacity-50 font-black text-6xl text-slate-100 dark:text-slate-800/50 -z-10 select-none pointer-events-none">
                                     {user.first_name?.[0]}
@@ -391,7 +391,7 @@ export default function AdminUsersPage() {
                                         </div>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                                                <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-accent rounded-full">
                                                     <MoreVertical className="w-5 h-5" />
                                                 </Button>
                                             </DropdownMenuTrigger>
@@ -488,21 +488,21 @@ export default function AdminUsersPage() {
 
                                     {/* Details Grid */}
                                     <div className="space-y-3">
-                                        <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                                            <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+                                        <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300 p-3 rounded-xl bg-slate-50 dark:bg-secondary/50 border border-slate-100 dark:border-border">
+                                            <div className="p-2 bg-white dark:bg-secondary rounded-lg shadow-sm">
                                                 <Mail className="w-4 h-4 text-blue-500" />
                                             </div>
                                             <span className="truncate text-sm font-medium">{user.email}</span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                                                <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+                                            <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300 p-3 rounded-xl bg-slate-50 dark:bg-secondary/50 border border-slate-100 dark:border-border">
+                                                <div className="p-2 bg-white dark:bg-secondary rounded-lg shadow-sm">
                                                     <Phone className="w-4 h-4 text-emerald-500" />
                                                 </div>
                                                 <span className="text-sm font-medium">{user.phone_number || 'N/A'}</span>
                                             </div>
-                                            <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                                                <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+                                            <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300 p-3 rounded-xl bg-slate-50 dark:bg-secondary/50 border border-slate-100 dark:border-border">
+                                                <div className="p-2 bg-white dark:bg-secondary rounded-lg shadow-sm">
                                                     <Calendar className="w-4 h-4 text-orange-500" />
                                                 </div>
                                                 <span className="text-sm font-medium">{formatDate(user.created_at).split(',')[0]}</span>
@@ -520,7 +520,7 @@ export default function AdminUsersPage() {
                                         </div>
                                         <Button
                                             size="sm"
-                                            className="h-10 px-4 rounded-xl bg-slate-900 text-white hover:bg-slate-800 shadow-md hover:shadow-lg transition-all"
+                                            className="h-10 px-4 rounded-xl bg-card text-white hover:bg-accent shadow-md hover:shadow-lg transition-all"
                                             onClick={() => {
                                                 setAdjustmentDialogUser(user)
                                                 setAdjustmentType('credit')

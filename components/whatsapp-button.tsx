@@ -41,14 +41,14 @@ export function WhatsAppButton() {
         >
             {/* Professional Note Popover */}
             {showNote && (
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-xl mb-2 max-w-[250px] animate-in slide-in-from-right-10 fade-in duration-300 border border-slate-100 dark:border-slate-700 relative">
+                <div className="bg-white dark:bg-secondary p-4 rounded-lg shadow-xl mb-2 max-w-[250px] animate-in slide-in-from-right-10 fade-in duration-300 border border-slate-100 dark:border-border relative">
                     <button
                         onClick={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
                             setIsVisible(false)
                         }}
-                        className="absolute -top-3 -right-3 bg-white dark:bg-slate-700 text-slate-500 hover:text-red-500 p-2 rounded-full shadow-md border border-slate-100 dark:border-slate-600 z-50 flex items-center justify-center h-8 w-8 transition-colors"
+                        className="absolute -top-3 -right-3 bg-white dark:bg-secondary text-slate-500 hover:text-red-500 p-2 rounded-full shadow-md border border-slate-100 dark:border-slate-600 z-50 flex items-center justify-center h-8 w-8 transition-colors"
                         aria-label="Close Whatsapp Support"
                     >
                         <X className="w-5 h-5" />

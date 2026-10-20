@@ -183,13 +183,13 @@ function GuestPurchaseContent() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-20">
+        <div className="min-h-screen bg-background pb-20">
             {/* Header */}
             <header className="bg-white border-b sticky top-0 z-40">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
                     <Link href="/" className="flex items-center space-x-2">
                         <ArrowLeft className="w-5 h-5 text-slate-500" />
-                        <span className="font-bold text-xl text-[#0056B3]">LASTHOPE</span>
+                        <span className="font-bold text-xl text-primary">LASTHOPE</span>
                     </Link>
                     <div className="flex items-center space-x-4">
                         <Link href="/auth/login">
@@ -244,7 +244,7 @@ function GuestPurchaseContent() {
                                             className={cn(
                                                 "px-6 py-3 rounded-xl font-bold transition-all flex items-center space-x-2 border-2",
                                                 selectedNetwork === net
-                                                    ? "bg-white border-[#0056B3] text-[#0056B3] shadow-md scale-105"
+                                                    ? "bg-white border-[#0056B3] text-primary shadow-md scale-105"
                                                     : "bg-slate-100 border-transparent text-slate-500 hover:bg-slate-200"
                                             )}
                                         >
@@ -270,7 +270,7 @@ function GuestPurchaseContent() {
                                                 className={cn(
                                                     "relative p-6 rounded-2xl text-left transition-all border-2 group",
                                                     selectedPackage?.id === pkg.id
-                                                        ? "bg-white border-[#0056B3] ring-4 ring-blue-50 text-[#0056B3] shadow-xl"
+                                                        ? "bg-white border-[#0056B3] ring-4 ring-blue-50 text-primary shadow-xl"
                                                         : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-lg"
                                                 )}
                                             >
@@ -289,7 +289,7 @@ function GuestPurchaseContent() {
                                                 <p className="text-sm text-slate-500 mt-1">{pkg.network} Bundle</p>
 
                                                 {selectedPackage?.id === pkg.id && (
-                                                    <div className="absolute top-4 right-4 text-[#0056B3]">
+                                                    <div className="absolute top-4 right-4 text-primary">
                                                         <CheckCircle2 className="w-6 h-6" />
                                                     </div>
                                                 )}
@@ -305,7 +305,7 @@ function GuestPurchaseContent() {
                                     <div className="h-2 bg-gradient-to-r from-[#0056B3] to-[#00B4D8}" />
                                     <CardHeader>
                                         <CardTitle className="flex items-center space-x-2 text-xl">
-                                            <ShoppingCart className="w-5 h-5 text-[#0056B3]" />
+                                            <ShoppingCart className="w-5 h-5 text-primary" />
                                             <span>Quick Checkout</span>
                                         </CardTitle>
                                     </CardHeader>
@@ -322,7 +322,7 @@ function GuestPurchaseContent() {
                                                 </div>
                                                 <div className="pt-2 border-t border-blue-200 flex justify-between items-center">
                                                     <span className="font-bold text-slate-900">Total:</span>
-                                                    <span className="text-xl font-black text-[#0056B3]">{formatCurrency(selectedPackage.price)}</span>
+                                                    <span className="text-xl font-black text-primary">{formatCurrency(selectedPackage.price)}</span>
                                                 </div>
                                             </div>
                                         ) : (
@@ -474,7 +474,7 @@ function GuestPurchaseContent() {
 
                             <div className="text-center">
                                 <Link href="/auth/signup">
-                                    <Button variant="link" className="text-[#0056B3] font-bold">
+                                    <Button variant="link" className="text-primary font-bold">
                                         Want agent discounts? Create an account today!
                                         <ArrowRight className="ml-2 w-4 h-4" />
                                     </Button>
@@ -492,7 +492,7 @@ export default function GuestPurchasePage() {
     return (
         <Suspense fallback={
             <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="w-10 h-10 animate-spin text-[#0056B3]" />
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
             </div>
         }>
             <GuestPurchaseContent />

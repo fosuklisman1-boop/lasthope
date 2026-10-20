@@ -125,7 +125,7 @@ export function DashboardSidebar() {
                 )}
             >
                 {/* Logo Header */}
-                <div className="h-20 flex items-center justify-between px-6 border-b border-gray-300 dark:border-gray-800">
+                <div className="h-20 flex items-center justify-between px-6 border-b border-gray-300 dark:border-border">
                     <Link href="/dashboard" className="flex items-center gap-3 group">
                         <div className="relative w-10 h-10 flex-shrink-0 transition-transform group-hover:scale-110">
                             <Image
@@ -152,7 +152,7 @@ export function DashboardSidebar() {
                         variant="ghost"
                         size="icon"
                         onClick={() => setIsCollapsed(!isCollapsed)}
-                        className="hidden lg:flex text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300 dark:hover:bg-gray-800 w-8 h-8 rounded-full"
+                        className="hidden lg:flex text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300 dark:hover:bg-accent w-8 h-8 rounded-full"
                     >
                         {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
                     </Button>
@@ -172,7 +172,7 @@ export function DashboardSidebar() {
                         "mx-4 mt-6 p-4 rounded-2xl border shadow-lg",
                         isResellerRole(dbUser?.role)
                             ? "bg-[#FFCE00] border-black/10"
-                            : "bg-gradient-to-br from-gray-200/90 to-gray-300 dark:from-gray-800/90 dark:to-gray-900 border-gray-400/50 dark:border-gray-700/50"
+                            : "bg-gradient-to-br from-gray-200/90 to-gray-300 dark:from-background/90 dark:to-background border-gray-400/50 dark:border-border/50"
                     )}>
                         {/* User Info Row */}
                         <div className="flex items-center gap-3.5 mb-4">
@@ -183,7 +183,7 @@ export function DashboardSidebar() {
                             >
                                 <RoleIcon className="w-6 h-6" />
                                 <div
-                                    className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-gray-200 dark:border-gray-900 bg-white dark:bg-gray-800"
+                                    className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-gray-200 dark:border-gray-900 bg-white dark:bg-secondary"
                                 >
                                     <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
                                 </div>
@@ -221,7 +221,7 @@ export function DashboardSidebar() {
                             "flex items-center justify-between p-3 rounded-xl border backdrop-blur-md",
                             isResellerRole(dbUser?.role)
                                 ? "bg-[#FFCE00] border-black/10"
-                                : "bg-gray-300/60 dark:bg-black/40 border-gray-400/30 dark:border-gray-800/50"
+                                : "bg-gray-300/60 dark:bg-black/40 border-gray-400/30 dark:border-border/50"
                         )}>
                             <div>
                                 <p className={cn(
@@ -281,7 +281,7 @@ export function DashboardSidebar() {
                                                     : "neo-inset text-primary [text-shadow:0_0_12px_hsl(var(--neon-cyan)/0.5)]"
                                                 : isResellerRole(dbUser?.role)
                                                     ? "text-black hover:text-[#FFCE00] hover:bg-black/10"
-                                                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-300/60 dark:hover:bg-gray-800/60 hover:text-gray-900 dark:hover:text-gray-200",
+                                                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-300/60 dark:hover:bg-accent/60 hover:text-gray-900 dark:hover:text-gray-200",
                                             isCollapsed && "justify-center px-2"
                                         )}
                                     >
@@ -317,7 +317,7 @@ export function DashboardSidebar() {
                                                 "flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-200",
                                                 isActive
                                                     ? "neo-inset text-[hsl(var(--neon-coral))] [text-shadow:0_0_12px_hsl(var(--neon-coral)/0.5)]"
-                                                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-300/60 dark:hover:bg-gray-800/60 hover:text-gray-900 dark:hover:text-gray-200",
+                                                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-300/60 dark:hover:bg-accent/60 hover:text-gray-900 dark:hover:text-gray-200",
                                                 isCollapsed && "justify-center px-2"
                                             )}
                                         >
@@ -330,7 +330,7 @@ export function DashboardSidebar() {
                         </>
                     )}
                     {/* Logout Button - Inside scrollable area */}
-                    <div className="mt-4 pt-3 border-t border-gray-300 dark:border-gray-800">
+                    <div className="mt-4 pt-3 border-t border-gray-300 dark:border-border">
                         <Button
                             variant="ghost"
                             onClick={signOut}

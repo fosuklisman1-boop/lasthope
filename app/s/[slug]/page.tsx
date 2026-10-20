@@ -113,7 +113,7 @@ export default function StorefrontPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="min-h-screen flex items-center justify-center bg-background">
                 <div className="text-center space-y-4">
                     <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
                     <p className="text-muted-foreground animate-pulse">Loading storefront...</p>
@@ -124,7 +124,7 @@ export default function StorefrontPage() {
 
     if (!shop) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+            <div className="min-h-screen flex items-center justify-center bg-background p-4">
                 <Card className="max-w-md w-full text-center p-8">
                     <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
                     <CardTitle className="text-2xl mb-2">Shop Not Found</CardTitle>
@@ -140,7 +140,7 @@ export default function StorefrontPage() {
     const networks = Array.from(new Set(packages.map(p => p.network)))
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-12">
+        <div className="min-h-screen bg-background pb-12">
             {/* Header / Branding */}
             <div 
                 className="h-64 relative flex items-center justify-center text-white overflow-hidden"

@@ -240,7 +240,7 @@ export default function HomePage() {
                                 Join thousands of Ghanaians who trust LASTHOPE for their mobile data bundle needs.
                             </p>
                             <Link href="/auth/signup">
-                                <Button size="xl" className="bg-white text-[#0056B3] hover:bg-white/90 text-lg px-8 font-bold shadow-lg">
+                                <Button size="xl" className="bg-white text-primary hover:bg-white/90 text-lg px-8 font-bold shadow-lg">
                                     Create Free Account
                                     <ArrowRight className="ml-2 w-5 h-5" />
                                 </Button>
