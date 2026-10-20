@@ -33,6 +33,7 @@ interface AuditEntry {
 const FILTERS: { value: string; label: string }[] = [
     { value: 'all', label: 'All actions' },
     { value: 'wallet.*', label: 'Wallet adjustments' },
+    { value: 'payment.*', label: 'Payment fixes' },
     { value: 'order.*', label: 'Orders and refunds' },
     { value: 'user.*', label: 'Users and roles' },
     { value: 'package.*', label: 'Packages' },
@@ -49,7 +50,7 @@ const FILTERS: { value: string; label: string }[] = [
 // One neon colour per area, so the log can be scanned by eye.
 function areaColor(action: string): string {
     const area = action.split('.')[0]
-    if (area === 'wallet' || area === 'withdrawal') return 'var(--neon-amber)'
+    if (area === 'wallet' || area === 'withdrawal' || area === 'payment') return 'var(--neon-amber)'
     if (area === 'order' || area === 'complaint') return 'var(--neon-cyan)'
     if (area === 'user' || area === 'api_key') return 'var(--neon-violet)'
     if (area === 'system') return 'var(--neon-coral)'

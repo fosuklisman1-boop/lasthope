@@ -3,6 +3,7 @@ import type { AdminAuth } from '@/lib/require-admin'
 /** Every kind of admin action we record. Keep this list in sync with the audit-log page filters. */
 export const AUDIT_ACTIONS = [
     'wallet.adjust',
+    'payment.reconcile',
     'order.refund',
     'order.status',
     'order.batch',

@@ -10,14 +10,20 @@ export async function POST(request: NextRequest) {
         const supabase = auth.supabase
 
         const body = await request.json()
-        const { orderId, batchId, status } = body
+        const { orderId, batchId, status, orderIds } = body
 
         if (!status) {
             return NextResponse.json({ error: 'Status is required' }, { status: 400 })
         }
+        if (!['pending', 'processing', 'completed', 'failed'].includes(status)) {
+            return NextResponse.json({ error: 'Status must be pending, processing, completed or failed' }, { status: 400 })
+        }
 
-        if (!orderId && !batchId) {
-            return NextResponse.json({ error: 'orderId or batchId is required' }, { status: 400 })
+        if (!orderId && !batchId && !Array.isArray(orderIds)) {
+            return NextResponse.json({ error: 'orderId, batchId or orderIds is required' }, { status: 400 })
+        }
+        if (Array.isArray(orderIds) && (orderIds.length === 0 || orderIds.length > 200)) {
+            return NextResponse.json({ error: 'orderIds must contain between 1 and 200 orders' }, { status: 400 })
         }
 
         let affectedOrders: any[] = []
@@ -66,6 +72,40 @@ export async function POST(request: NextRequest) {
             // Update order status atomically (also merges download_batch_id and enqueues webhook deliveries)
             const newBatchId = batchIdToAssign && !(order as any).download_batch_id ? batchIdToAssign : null
             await setOrderStatus(orderId, status, { extra: newBatchId ? { download_batch_id: newBatchId } : {} }, supabase)
+        } else if (Array.isArray(orderIds)) {
+            const ids = Array.from(new Set(orderIds.filter((i: unknown): i is string => typeof i === 'string')))
+            console.log(`[AdminStatusUpdate] Bulk update of ${ids.length} orders to ${status}`)
+            const { data: found, error: fetchError } = await supabase
+                .from('orders')
+                .select('id, user_id, reference_code, phone_number, network, status, payment_status, download_batch_id, users(phone_number)')
+                .in('id', ids)
+            if (fetchError) throw fetchError
+
+            // Refunded orders keep their state, same as the batch update.
+            affectedOrders = (found || []).filter(o => (o as any).payment_status !== 'refunded')
+
+            // Orders not yet in a batch go into one manual batch so they show up in history.
+            const unbatched = affectedOrders.filter(o => !(o as any).download_batch_id)
+            let manualBatchId: string | null = null
+            if (unbatched.length > 0) {
+                const networks = Array.from(new Set(unbatched.map(o => (o as any).network).filter(Boolean)))
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19)
+                const { data: newBatch, error: batchError } = await (supabase.from('download_batches') as any)
+                    .insert({
+                        filename: `manual_bulk_${status}_${timestamp}.xlsx`,
+                        order_count: unbatched.length,
+                        network: networks.length === 1 ? networks[0] : 'Multiple',
+                    })
+                    .select()
+                    .single()
+                if (batchError) console.error('[AdminStatusUpdate] Bulk batch creation error:', batchError)
+                else manualBatchId = (newBatch as any).id
+            }
+
+            for (const o of affectedOrders) {
+                const needsBatch = manualBatchId && !(o as any).download_batch_id
+                await setOrderStatus((o as any).id, status, { extra: needsBatch ? { download_batch_id: manualBatchId } : {} }, supabase)
+            }
         } else if (batchId) {
             console.log(`[AdminStatusUpdate] Updating batch: ${batchId} to ${status}`)
             // Fetch orders in batch - use regular join (outer) to include guest orders
@@ -114,10 +154,10 @@ export async function POST(request: NextRequest) {
 
         await logAudit(auth, {
             action: 'order.status',
-            targetType: orderId ? 'order' : 'batch',
-            targetId: String(orderId ?? batchId),
+            targetType: orderId ? 'order' : batchId ? 'batch' : 'orders',
+            targetId: String(orderId ?? batchId ?? 'bulk'),
             summary: `Marked ${affectedOrders.length} order(s) as ${status}`,
-            details: { status, count: affectedOrders.length, orderId, batchId },
+            details: { status, count: affectedOrders.length, orderId, batchId, orderIds: Array.isArray(orderIds) ? orderIds : undefined },
         }, request)
 
         return NextResponse.json({

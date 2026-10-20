@@ -54,6 +54,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 
 // Simple browser-side cache to reduce Vercel CPU usage
 const adminCache = {
@@ -86,6 +87,78 @@ export default function AdminOrdersPage() {
     const [isDownloading, setIsDownloading] = useState(false)
     const [lastDownloadTime, setLastDownloadTime] = useState(0)
     const DOWNLOAD_COOLDOWN = 3000 // 3 seconds cooldown
+
+    // Bulk selection on the Available tab
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [bulkBusy, setBulkBusy] = useState(false)
+
+    const toggleSelected = (id: string) =>
+        setSelectedIds(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+        })
+
+    const handleBulkStatus = async (status: 'completed' | 'failed' | 'processing') => {
+        const ids = Array.from(selectedIds)
+        if (ids.length === 0) return
+        if (!confirm(`Mark ${ids.length} order(s) as ${status}?`)) return
+        setBulkBusy(true)
+        try {
+            for (let i = 0; i < ids.length; i += 200) {
+                const res = await fetch('/api/admin/orders/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderIds: ids.slice(i, i + 200), status }),
+                })
+                const json = await res.json().catch(() => ({}))
+                if (!res.ok) throw new Error(json.error || 'Failed to update orders')
+            }
+            toast.success(`${ids.length} order(s) marked as ${status}`)
+            setSelectedIds(new Set())
+            fetchOrders(true)
+            fetchBatches(0, true, true)
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to update orders')
+        } finally {
+            setBulkBusy(false)
+        }
+    }
+
+    const handleBulkRefund = async () => {
+        const ids = Array.from(selectedIds)
+        if (ids.length === 0) return
+        const reason = window.prompt(`Refund ${ids.length} order(s)? Each user's wallet is credited.\n\nReason (required):`)
+        if (reason === null) return
+        if (reason.trim().length < 5) {
+            toast.error('Give a reason of at least 5 characters')
+            return
+        }
+        setBulkBusy(true)
+        let done = 0
+        const failures: string[] = []
+        for (const id of ids) {
+            try {
+                const res = await fetch('/api/admin/orders/refund', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderId: id, reason: reason.trim() }),
+                })
+                const json = await res.json().catch(() => ({}))
+                if (!res.ok) throw new Error(json.error || 'Failed')
+                done++
+            } catch (error: any) {
+                failures.push(error.message)
+            }
+        }
+        if (failures.length === 0) toast.success(`Refunded ${done} order(s)`)
+        else toast.error(`Refunded ${done}, failed ${failures.length}: ${failures[0]}`)
+        setSelectedIds(new Set())
+        fetchOrders(true)
+        fetchBatches(0, true, true)
+        setBulkBusy(false)
+    }
 
     // Debounce search term
     useEffect(() => {
@@ -397,7 +470,7 @@ export default function AdminOrdersPage() {
         }
     }
 
-    const handleExportExcel = async () => {
+    const handleExportExcel = async (onlySelected = false) => {
         // Check if download is in progress
         if (isDownloading) {
             toast.error('Download already in progress. Please wait...')
@@ -415,6 +488,7 @@ export default function AdminOrdersPage() {
 
         const pendingOrders = (Array.isArray(filteredOrders) ? filteredOrders : [])
             .filter(o => o.status === 'pending' && o.payment_status === 'paid')
+            .filter(o => !onlySelected || selectedIds.has(o.id))
 
         if (pendingOrders.length === 0) {
             toast.error('No PENDING orders to export')
@@ -937,7 +1011,7 @@ export default function AdminOrdersPage() {
                 </div>
                 <div className="flex flex-wrap justify-center gap-2">
                     <Button
-                        onClick={handleExportExcel}
+                        onClick={() => handleExportExcel(false)}
                         variant="default"
                         className="bg-emerald-600 hover:bg-emerald-700 text-white border-none"
                         disabled={isDownloading}
@@ -1013,6 +1087,33 @@ export default function AdminOrdersPage() {
                         </CardHeader>
                     </Card>
 
+                    {filteredOrders.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-3 px-1">
+                            <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                                <Checkbox
+                                    checked={filteredOrders.length > 0 && filteredOrders.every((o: any) => selectedIds.has(o.id))}
+                                    onCheckedChange={(checked) =>
+                                        setSelectedIds(checked ? new Set(filteredOrders.map((o: any) => o.id)) : new Set())
+                                    }
+                                    aria-label="Select all shown orders"
+                                />
+                                Select all {filteredOrders.length} shown
+                            </label>
+                        </div>
+                    )}
+
+                    {selectedIds.size > 0 && (
+                        <div className="sticky bottom-4 z-30 mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-card/95 p-3 shadow-[0_12px_40px_hsl(var(--shade)/0.7)] backdrop-blur">
+                            <span className="px-2 text-sm font-semibold">{selectedIds.size} selected</span>
+                            <Button size="sm" variant="success" disabled={bulkBusy} onClick={() => handleBulkStatus('completed')}>Mark completed</Button>
+                            <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => handleBulkStatus('processing')}>Mark processing</Button>
+                            <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => handleBulkStatus('failed')}>Mark failed</Button>
+                            <Button size="sm" variant="outline" disabled={bulkBusy} onClick={handleBulkRefund}>Refund</Button>
+                            <Button size="sm" disabled={bulkBusy || isDownloading} onClick={() => handleExportExcel(true)}>Export selected</Button>
+                            <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => setSelectedIds(new Set())}>Clear</Button>
+                        </div>
+                    )}
+
                     {filteredOrders.length === 0 ? (
                         <div className="flex flex-col items-center justify-center p-12 bg-muted/20 rounded-lg border border-dashed">
                             <Package className="w-12 h-12 text-muted-foreground/50 mb-4" />
@@ -1023,8 +1124,15 @@ export default function AdminOrdersPage() {
                             {Array.isArray(filteredOrders) && filteredOrders.map((order) => (
                                 <Card key={order.id} className="relative overflow-hidden border shadow-sm lg:hover:shadow-md transition-all duration-200">
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <div className="font-mono text-sm text-muted-foreground">
-                                            {order.reference_code}
+                                        <div className="flex items-center gap-3">
+                                            <Checkbox
+                                                checked={selectedIds.has(order.id)}
+                                                onCheckedChange={() => toggleSelected(order.id)}
+                                                aria-label={`Select order ${order.reference_code}`}
+                                            />
+                                            <div className="font-mono text-sm text-muted-foreground">
+                                                {order.reference_code}
+                                            </div>
                                         </div>
                                         {getStatusBadge(order.status)}
                                     </CardHeader>
