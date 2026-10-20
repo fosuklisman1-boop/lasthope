@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
+import { logAudit } from '@/lib/audit'
 
 export async function POST(request: Request) {
     try {
@@ -27,6 +28,7 @@ export async function POST(request: Request) {
         const supabaseAdmin = auth.supabase
 
         console.log(`[Admin Delete] Attempting to delete user ${userId}`)
+        const { data: doomed } = await (supabaseAdmin.from('users') as any).select('email, role').eq('id', userId).single()
 
         // Step A: Delete from public.users first (Database Layer)
         // Although we have ON DELETE CASCADE, explicit delete ensures we know it worked
@@ -63,6 +65,13 @@ export async function POST(request: Request) {
         }
 
         console.log('[Admin Delete] User successfully deleted from Auth and DB')
+        await logAudit(auth, {
+            action: 'user.delete',
+            targetType: 'user',
+            targetId: userId,
+            summary: `Deleted the account ${doomed?.email ?? userId}`,
+            details: { email: doomed?.email, role: doomed?.role },
+        }, request)
 
         return NextResponse.json({ success: true })
 

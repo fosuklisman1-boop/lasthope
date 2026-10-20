@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
+import { logAudit } from '@/lib/audit'
 
 export async function POST(request: Request) {
     try {
@@ -33,6 +34,8 @@ export async function POST(request: Request) {
         // Use service role client for the update (bypasses RLS)
         const supabaseAdmin = auth.supabase
 
+        const { data: before } = await (supabaseAdmin.from('users') as any).select('status, email').eq('id', userId).single()
+
         // Update user status
         const { error: updateError } = await (supabaseAdmin
             .from('users') as any)
@@ -48,6 +51,13 @@ export async function POST(request: Request) {
         }
 
         console.log(`[Admin] User ${userId} status updated to ${status} by ${auth.userId}`)
+        await logAudit(auth, {
+            action: 'user.status',
+            targetType: 'user',
+            targetId: userId,
+            summary: `Changed a user's status from ${before?.status ?? 'unknown'} to ${status}`,
+            details: { from: before?.status, to: status, email: before?.email },
+        }, request)
 
         return NextResponse.json({ success: true })
 

@@ -66,17 +66,14 @@ export default function AdminAnnouncementsPage() {
             // But for now, let's allow multiple (though UI might visually prioritize latest)
             // Or typically, creating a new one makes it the active one.
 
-            const { data, error } = await (supabase
-                .from('system_announcements') as any)
-                .insert({
-                    title,
-                    message,
-                    is_active: true
-                })
-                .select()
-                .single()
-
-            if (error) throw error
+            const res = await fetch('/api/admin/announcements', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, message }),
+            })
+            const json = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(json.error || 'Request failed')
+            const data = json.announcement
 
             setAnnouncements([data, ...announcements])
             setTitle('')
@@ -92,12 +89,13 @@ export default function AdminAnnouncementsPage() {
 
     const handleToggleStatus = async (id: string, currentStatus: boolean) => {
         try {
-            const { error } = await (supabase
-                .from('system_announcements') as any)
-                .update({ is_active: !currentStatus })
-                .eq('id', id)
-
-            if (error) throw error
+            const res = await fetch('/api/admin/announcements', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, is_active: !currentStatus }),
+            })
+            const json = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(json.error || 'Request failed')
 
             setAnnouncements(announcements.map(a =>
                 a.id === id ? { ...a, is_active: !currentStatus } : a
@@ -112,12 +110,11 @@ export default function AdminAnnouncementsPage() {
         if (!confirm('Are you sure you want to delete this announcement?')) return
 
         try {
-            const { error } = await (supabase
-                .from('system_announcements') as any)
-                .delete()
-                .eq('id', id)
-
-            if (error) throw error
+            const res = await fetch(`/api/admin/announcements?id=${encodeURIComponent(id)}`, {
+                method: 'DELETE',
+            })
+            const json = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(json.error || 'Request failed')
 
             setAnnouncements(announcements.filter(a => a.id !== id))
             toast.success('Announcement deleted')
@@ -146,17 +143,13 @@ export default function AdminAnnouncementsPage() {
 
         setIsUpdating(true)
         try {
-            const { error } = await (supabase
-                .from('system_announcements') as any)
-                .update({
-                    title: editTitle.trim(),
-                    message: editMessage.trim(),
-                    is_active: true,
-                    created_at: new Date().toISOString() // Update timestamp for repost
-                })
-                .eq('id', editingId)
-
-            if (error) throw error
+            const res = await fetch('/api/admin/announcements', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: editingId, title: editTitle.trim(), message: editMessage.trim() }),
+            })
+            const json = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(json.error || 'Request failed')
 
             // Update local state
             setAnnouncements(announcements.map(a =>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
 import { sendOrderRefundSMS } from '@/lib/sms-service'
 import { setOrderStatus } from '@/lib/order-status'
+import { logAudit } from '@/lib/audit'
 
 export async function POST(request: NextRequest) {
     try {
@@ -14,6 +15,9 @@ export async function POST(request: NextRequest) {
 
         if (!orderId) {
             return NextResponse.json({ error: 'orderId is required' }, { status: 400 })
+        }
+        if (typeof body.reason !== 'string' || body.reason.trim().length < 5) {
+            return NextResponse.json({ error: 'A reason of at least 5 characters is required' }, { status: 400 })
         }
 
         // 1. Fetch order details
@@ -162,6 +166,14 @@ export async function POST(request: NextRequest) {
         }
 
         console.log(`[RefundOrder] Successfully refunded order ${orderId}`)
+        await logAudit(auth, {
+            action: 'order.refund',
+            targetType: 'order',
+            targetId: orderId,
+            summary: `Refunded GHS ${refundAmount.toFixed(2)} for order ${(order as any).reference_code}`,
+            details: { amount: refundAmount, reference: (order as any).reference_code, userId: (order as any).user_id, newBalance },
+            reason: typeof body.reason === 'string' ? body.reason : undefined,
+        }, request)
 
         return NextResponse.json({
             success: true,

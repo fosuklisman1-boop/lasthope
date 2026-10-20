@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
+import { logAudit } from '@/lib/audit'
+import { checkAdjustment, parseConfirmAbove } from '@/lib/adjustments'
 import { sendWalletTopupSuccessEmail } from '@/lib/email-service'
 import { sendWalletTopupSuccessSMS } from '@/lib/sms-service'
 
@@ -13,16 +15,31 @@ export async function POST(request: NextRequest) {
         const supabase = auth.supabase
 
         const body = await request.json()
-        const { userId, amount, type, description } = body
+        const { userId, amount, type, confirmLarge } = body
 
-        if (!userId || amount === undefined || !type) {
-            return NextResponse.json({ error: 'userId, amount, and type are required' }, { status: 400 })
+        if (!userId || amount === undefined || !['credit', 'debit'].includes(type)) {
+            return NextResponse.json({ error: 'userId, amount, and type (credit or debit) are required' }, { status: 400 })
         }
 
-        const adjustmentAmount = parseFloat(amount)
-        if (isNaN(adjustmentAmount) || adjustmentAmount <= 0) {
-            return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
+        // A reason is required, and large amounts need a second confirmation (threshold lives in settings).
+        const { data: thresholdRow } = await (supabase.from('admin_settings') as any)
+            .select('value')
+            .eq('key', 'wallet_adjustment_confirm_above')
+            .maybeSingle()
+        const check = checkAdjustment({
+            amount,
+            reason: body.reason ?? body.description,
+            confirmLarge: confirmLarge === true,
+            confirmAbove: parseConfirmAbove(thresholdRow?.value),
+        })
+        if (!check.ok) {
+            return NextResponse.json(
+                { error: check.error, code: check.code },
+                { status: check.code === 'needs_confirmation' ? 409 : 400 }
+            )
         }
+        const adjustmentAmount = check.amount
+        const description = check.reason
 
         // CHECK ENV VAR
         if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -109,6 +126,15 @@ export async function POST(request: NextRequest) {
         if (transError) {
             console.error('[AdminWalletAdjustment] Transaction log error:', transError)
         }
+
+        await logAudit(auth, {
+            action: 'wallet.adjust',
+            targetType: 'user',
+            targetId: userId,
+            summary: `${isCredit ? 'Credited' : 'Debited'} GHS ${adjustmentAmount.toFixed(2)} ${isCredit ? 'to' : 'from'} a user wallet`,
+            details: { type, amount: adjustmentAmount, newBalance },
+            reason: description,
+        }, request)
 
         // 4. Send notification
         await (supabase.from('notifications') as any).insert({

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
+import { logAudit } from '@/lib/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -102,6 +103,15 @@ export async function PATCH(request: NextRequest) {
                 action_url: '/dashboard/my-shop'
             })
         }
+
+        await logAudit(auth, {
+            action: 'withdrawal.update',
+            targetType: 'withdrawal',
+            targetId: String(id),
+            summary: `${status === 'approved' ? 'Approved' : 'Rejected'} a withdrawal of GHS ${data.amount}`,
+            details: { status, amount: data.amount, userId: data.user_id },
+            reason: adminNotes || undefined,
+        }, request)
 
         return NextResponse.json({ success: true, withdrawal: data })
     } catch (error: any) {

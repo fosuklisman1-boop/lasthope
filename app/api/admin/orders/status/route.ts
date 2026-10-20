@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
+import { logAudit } from '@/lib/audit'
 import { setOrderStatus } from '@/lib/order-status'
 
 export async function POST(request: NextRequest) {
@@ -110,6 +111,14 @@ export async function POST(request: NextRequest) {
                 }
             }
         }
+
+        await logAudit(auth, {
+            action: 'order.status',
+            targetType: orderId ? 'order' : 'batch',
+            targetId: String(orderId ?? batchId),
+            summary: `Marked ${affectedOrders.length} order(s) as ${status}`,
+            details: { status, count: affectedOrders.length, orderId, batchId },
+        }, request)
 
         return NextResponse.json({
             success: true,

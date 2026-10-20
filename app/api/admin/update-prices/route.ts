@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
 import { RESELLER_TIERS } from '@/lib/roles'
+import { logAudit } from '@/lib/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +21,12 @@ export async function POST(request: NextRequest) {
       const { error } = await supabaseAdmin.from('admin_settings').insert({ key, value: String(prices[t]) } as any)
       if (error) return NextResponse.json({ error: `Failed to update ${key}: ${error.message}` }, { status: 500 })
     }
+    await logAudit(auth, {
+      action: 'prices.update',
+      targetType: 'settings',
+      summary: 'Updated reseller upgrade prices',
+      details: { prices },
+    }, request)
     return NextResponse.json({ success: true })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })

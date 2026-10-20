@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
@@ -64,7 +65,7 @@ export default function AdminUsersPage() {
     const [adjustmentDialogUser, setAdjustmentDialogUser] = useState<any>(null)
     const [adjustmentAmount, setAdjustmentAmount] = useState('')
     const [adjustmentType, setAdjustmentType] = useState<'credit' | 'debit'>('credit')
-    const [adjustmentDescription, setAdjustmentDescription] = useState('Admin manual adjustment')
+    const [adjustmentDescription, setAdjustmentDescription] = useState('')
     const [isAdjusting, setIsAdjusting] = useState(false)
 
     // Debounce search term
@@ -176,18 +177,28 @@ export default function AdminUsersPage() {
 
         setIsAdjusting(true)
         try {
-            const response = await fetch('/api/admin/users/wallet/adjustment', {
+            const send = (confirmLarge: boolean) => fetch('/api/admin/users/wallet/adjustment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: adjustmentDialogUser.id,
                     amount: amount,
                     type: adjustmentType,
-                    description: adjustmentDescription
+                    reason: adjustmentDescription,
+                    confirmLarge
                 })
             })
 
-            const result = await response.json()
+            let response = await send(false)
+            let result = await response.json()
+
+            if (response.status === 409 && result.code === 'needs_confirmation') {
+                const verb = adjustmentType === 'credit' ? 'credit' : 'debit'
+                if (!confirm(`${result.error}.\n\nReally ${verb} GHS ${amount.toFixed(2)}?`)) return
+                response = await send(true)
+                result = await response.json()
+            }
+
             if (!response.ok) {
                 const errorMessage = result.details ? `${result.error}: ${result.details}` : (result.error || 'Failed to adjust wallet')
                 throw new Error(errorMessage)
@@ -207,6 +218,7 @@ export default function AdminUsersPage() {
             fetchUsers(0, true) // Refresh list to show new balance
             setAdjustmentDialogUser(null)
             setAdjustmentAmount('')
+            setAdjustmentDescription('')
         } catch (error: any) {
             console.error('Adjustment error:', error)
             toast.error(error.message || `Failed to ${adjustmentType} wallet`)
@@ -370,7 +382,7 @@ export default function AdminUsersPage() {
                                                 )
                                             })()}
                                             <div>
-                                                <h3 className="font-bold text-xl text-slate-900 dark:text-white line-clamp-1">{user.first_name} {user.last_name}</h3>
+                                                <h3 className="font-bold text-xl text-slate-900 dark:text-white line-clamp-1"><Link href={`/admin/users/${user.id}`} className="hover:text-primary hover:underline">{user.first_name} {user.last_name}</Link></h3>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     {(() => {
                                                         const userRole = (user.role || 'user') as UserRole
@@ -588,13 +600,18 @@ export default function AdminUsersPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Description</Label>
+                            <Label htmlFor="adjustment-description">Reason (required)</Label>
                             <Input
                                 id="adjustment-description"
                                 name="adjustment-description"
                                 value={adjustmentDescription}
                                 onChange={(e) => setAdjustmentDescription(e.target.value)}
+                                placeholder="e.g. Failed top-up compensation, ticket #1234"
+                                maxLength={300}
                             />
+                            <p className="text-xs text-muted-foreground">
+                                The user sees this in their wallet history. It is also saved in the audit log.
+                            </p>
                         </div>
                     </div>
                     <DialogFooter>
@@ -602,7 +619,7 @@ export default function AdminUsersPage() {
                         <Button
                             variant={adjustmentType === 'debit' ? 'destructive' : 'default'}
                             onClick={handleManualAdjustment}
-                            disabled={isAdjusting}
+                            disabled={isAdjusting || adjustmentDescription.trim().length < 5}
                         >
                             {isAdjusting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                             {adjustmentType === 'credit' ? 'Credit Wallet' : 'Debit Wallet'}

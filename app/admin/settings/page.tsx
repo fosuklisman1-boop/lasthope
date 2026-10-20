@@ -103,11 +103,13 @@ export default function AdminSettingsPage() {
                 { key: 'page_access_profile', value: String(pageAccessProfile) }
             ]
 
-            const { error } = await (supabase
-                .from('admin_settings') as any)
-                .upsert(updates)
-
-            if (error) throw error
+            const res = await fetch('/api/admin/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ updates }),
+            })
+            const json = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(json.error || 'Request failed')
             toast.success('Settings saved successfully')
         } catch (error) {
             console.error('Error saving settings:', error)

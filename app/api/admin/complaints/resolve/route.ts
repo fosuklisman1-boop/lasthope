@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/require-admin'
 import { NextResponse } from 'next/server'
+import { logAudit } from '@/lib/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -88,6 +89,15 @@ export async function POST(request: Request) {
             console.error('Failed to send resolution email:', emailError)
             // Don't fail the request
         }
+
+        await logAudit(auth, {
+            action: 'complaint.resolve',
+            targetType: 'complaint',
+            targetId: String(id),
+            summary: `Marked a complaint as ${status}`,
+            details: { status, orderRef: order_ref },
+            reason: resolution_notes || undefined,
+        }, request)
 
         return NextResponse.json({ success: true })
     } catch (error: any) {

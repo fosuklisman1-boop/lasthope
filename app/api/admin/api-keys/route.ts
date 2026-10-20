@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
+import { logAudit } from '@/lib/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -111,6 +112,14 @@ export async function PATCH(request: NextRequest) {
             console.error('[AdminApiKeysPatch] Error:', error)
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
+
+        await logAudit(auth, {
+            action: action === 'approve' ? 'api_key.approve' : 'api_key.revoke',
+            targetType: 'api_key',
+            targetId: String(id),
+            summary: action === 'approve' ? 'Approved a developer API key' : 'Revoked a developer API key',
+            details: { action, rate_limit_per_min: update.rate_limit_per_min },
+        }, request)
 
         return NextResponse.json({ success: true })
     } catch (error: any) {

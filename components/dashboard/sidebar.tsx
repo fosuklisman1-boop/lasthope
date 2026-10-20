@@ -30,7 +30,8 @@ import {
     Store,
     History,
     Code2,
-    KeyRound
+    KeyRound,
+    ScrollText
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -63,6 +64,7 @@ const adminNavItems = [
     { href: '/admin/sms-broadcast', label: 'SMS', icon: MessageSquare },
     { href: '/admin/profits-history', label: 'Profits', icon: Wallet },
     { href: '/admin/withdrawals', label: 'Withdrawals', icon: History },
+    { href: '/admin/audit-log', label: 'Audit Log', icon: ScrollText },
     { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 

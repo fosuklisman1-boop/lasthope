@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
+import { logAudit } from '@/lib/audit'
 
 export async function POST(request: NextRequest) {
     try {
@@ -53,6 +54,14 @@ export async function POST(request: NextRequest) {
             .eq('id', batchId)
 
         if (batchDeleteError) console.error('Failed to delete batch:', batchDeleteError)
+
+        await logAudit(auth, {
+            action: 'order.delete_failed',
+            targetType: 'batch',
+            targetId: String(batchId),
+            summary: `Deleted ${failedOrderCount} failed order(s) from a batch`,
+            details: { count: failedOrderCount, orderIds },
+        }, request)
 
         return NextResponse.json({
             success: true,

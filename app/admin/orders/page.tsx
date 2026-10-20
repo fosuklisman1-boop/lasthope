@@ -366,13 +366,18 @@ export default function AdminOrdersPage() {
     }
 
     const handleRefund = async (order: any) => {
-        if (!confirm('Are you sure you want to refund this order? This will credit the user\'s wallet.')) return
+        const reason = window.prompt("Refund this order? This credits the user's wallet.\n\nReason (required):")
+        if (reason === null) return
+        if (reason.trim().length < 5) {
+            toast.error('Give a reason of at least 5 characters')
+            return
+        }
 
         try {
             const response = await fetch('/api/admin/orders/refund', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orderId: order.id })
+                body: JSON.stringify({ orderId: order.id, reason: reason.trim() })
             })
 
             const result = await response.json()

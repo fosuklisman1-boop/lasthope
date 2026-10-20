@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
+import { logAudit } from '@/lib/audit'
 import { setOrderStatus } from '@/lib/order-status'
 
 export async function POST(request: NextRequest) {
@@ -90,6 +91,14 @@ export async function POST(request: NextRequest) {
         for (const id of orderIds) {
             await setOrderStatus(id, 'processing', {}, supabase)
         }
+
+        await logAudit(auth, {
+            action: 'order.batch',
+            targetType: 'batch',
+            targetId: String((batch as any).id),
+            summary: `Created a download batch of ${orderIds.length} order(s)`,
+            details: { filename: (batch as any).filename, network, count: orderIds.length },
+        }, request)
 
         return NextResponse.json({
             success: true,

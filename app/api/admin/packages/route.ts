@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(request: NextRequest) {
     const auth = await requireAdmin()
@@ -42,6 +43,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    await logAudit(auth, {
+        action: 'package.create',
+        targetType: 'package',
+        targetId: String(data?.id ?? ''),
+        summary: `Created a data package${data?.network ? ' on ' + data.network : ''}`,
+        details: { package: data },
+    }, request)
+
     return NextResponse.json(data)
 }
 
@@ -74,6 +83,14 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    await logAudit(auth, {
+        action: 'package.update',
+        targetType: 'package',
+        targetId: String(id),
+        summary: `Edited a data package${data?.network ? ' on ' + data.network : ''}`,
+        details: { changes: updates },
+    }, request)
+
     return NextResponse.json(data)
 }
 
@@ -91,6 +108,8 @@ export async function DELETE(request: NextRequest) {
         return NextResponse.json({ error: 'Package ID required' }, { status: 400 })
     }
 
+    const { data: gone } = await (auth.supabase.from('data_packages') as any).select('*').eq('id', id).single()
+
     const { error } = await auth.supabase
         .from('data_packages')
         .delete()
@@ -100,6 +119,14 @@ export async function DELETE(request: NextRequest) {
         console.error('Delete package error:', error)
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    await logAudit(auth, {
+        action: 'package.delete',
+        targetType: 'package',
+        targetId: id,
+        summary: `Deleted a data package${gone?.network ? ' on ' + gone.network : ''}`,
+        details: { package: gone },
+    }, request)
 
     return NextResponse.json({ success: true })
 }
