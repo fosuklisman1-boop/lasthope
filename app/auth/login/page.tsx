@@ -76,7 +76,7 @@ export default function LoginPage() {
                     </Link>
                 </div>
 
-                <Card className="w-full border-0 bg-[#EEEEEE]/30 backdrop-blur-md shadow-2xl rounded-2xl overflow-hidden">
+                <Card className="w-full overflow-hidden">
                     <CardContent className="p-5 sm:p-6">
                         <form onSubmit={handleSubmit} className="space-y-4">
                             {error && (
@@ -96,7 +96,7 @@ export default function LoginPage() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         required
-                                        className="h-12 pl-11 bg-white/95 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-[#0056B3] focus:ring-[#0056B3]/20 rounded-xl text-base"
+                                        className="h-12 pl-11 text-base"
                                     />
                                 </div>
                             </div>
@@ -112,7 +112,7 @@ export default function LoginPage() {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         required
-                                        className="h-12 pl-11 pr-11 bg-white/95 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-[#0056B3] focus:ring-[#0056B3]/20 rounded-xl text-base"
+                                        className="h-12 pl-11 pr-11 text-base"
                                     />
                                     <button
                                         type="button"
@@ -127,7 +127,7 @@ export default function LoginPage() {
                             <Button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto h-12 text-base font-bold bg-sky-500 hover:bg-sky-600 text-white shadow-lg rounded-xl"
+                                className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto h-12 text-base font-bold "
                             >
                                 {isLoading ? (
                                     <>
@@ -144,9 +144,9 @@ export default function LoginPage() {
                         </form>
 
                         <div className="flex items-center my-4">
-                            <div className="flex-1 h-px bg-slate-300/60"></div>
+                            <div className="flex-1 h-px bg-border"></div>
                             <span className="px-3 text-sm text-slate-500">OR</span>
-                            <div className="flex-1 h-px bg-slate-300/60"></div>
+                            <div className="flex-1 h-px bg-border"></div>
                         </div>
 
                         <div className="text-center space-y-3 mt-4">
@@ -156,7 +156,7 @@ export default function LoginPage() {
                             <Button
                                 asChild
                                 variant="default"
-                                className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto h-12 text-base font-bold bg-sky-500 hover:bg-sky-600 text-white shadow-lg rounded-xl flex items-center justify-center"
+                                className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto h-12 text-base font-bold  flex items-center justify-center"
                             >
                                 <Link href="/auth/signup">
                                     Create New Account
@@ -171,7 +171,7 @@ export default function LoginPage() {
                             <Button
                                 asChild
                                 variant="default"
-                                className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto h-12 text-base font-bold bg-sky-500 hover:bg-sky-600 text-white shadow-lg rounded-xl flex items-center justify-center"
+                                className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto h-12 text-base font-bold  flex items-center justify-center"
                             >
                                 <Link href="/auth/reset-password">
                                     Reset Password

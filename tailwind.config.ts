@@ -18,6 +18,9 @@ const config = {
             },
         },
         extend: {
+            fontFamily: {
+                mono: ["var(--font-fira-code)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+            },
             colors: {
                 border: "hsl(var(--border))",
                 input: "hsl(var(--input))",

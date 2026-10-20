@@ -48,7 +48,7 @@ export default function DashboardLayout({
     if (isSuspended) {
         return (
             <UIProvider>
-                <div className="min-h-screen bg-[#E5E7EB] dark:bg-[#000000] relative">
+                <div className="min-h-screen bg-background relative">
                     <DashboardSidebar />
                     <div className="lg:pl-80">
                         <DashboardHeader />
@@ -64,7 +64,7 @@ export default function DashboardLayout({
 
     return (
         <UIProvider>
-            <div className="min-h-screen bg-[#E5E7EB] dark:bg-[#000000] relative">
+            <div className="min-h-screen bg-background relative">
                 <SystemAnnouncementModal />
                 <DashboardSidebar />
                 <div className="lg:pl-80">

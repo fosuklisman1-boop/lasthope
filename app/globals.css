@@ -26,26 +26,39 @@
     --radius: 0.75rem;
   }
 
+  /* Clay + neon-neumorphic theme. The app runs on this dark base
+     (the root <html> element carries the `dark` class). */
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --background: 228 40% 8.5%;
+    --foreground: 220 30% 94%;
+    --card: 228 33% 12.5%;
+    --card-foreground: 220 30% 94%;
+    --popover: 228 36% 11%;
+    --popover-foreground: 220 30% 94%;
+    --primary: 187 100% 58%;
+    --primary-foreground: 200 80% 8%;
+    --secondary: 228 28% 17%;
+    --secondary-foreground: 220 30% 94%;
+    --muted: 228 30% 15%;
+    --muted-foreground: 225 18% 68%;
+    --accent: 228 28% 18%;
+    --accent-foreground: 220 30% 94%;
+    --destructive: 350 100% 68%;
+    --destructive-foreground: 350 100% 97%;
+    --border: 228 25% 20%;
+    --input: 228 25% 20%;
+    --ring: 187 100% 58%;
+
+    /* Neumorphic surfaces and neon light sources */
+    --well: 228 45% 6.5%;
+    --neon-cyan: 187 100% 58%;
+    --neon-violet: 252 100% 71%;
+    --neon-mint: 160 90% 58%;
+    --neon-amber: 38 100% 64%;
+    --neon-coral: 350 100% 68%;
+    --shade: 228 60% 3%;
+    --glint: 225 60% 75%;
+    --radius: 1.25rem;
   }
 }
 
@@ -60,6 +73,12 @@
 
   body {
     @apply bg-background text-foreground;
+    /* One quiet pool of neon light at the top; everything else stays flat ink. */
+    background-image:
+      radial-gradient(60rem 28rem at 12% -8%, hsl(var(--neon-violet) / 0.10), transparent 70%),
+      radial-gradient(48rem 24rem at 92% -12%, hsl(var(--neon-cyan) / 0.08), transparent 70%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     font-feature-settings: "rlig" 1, "calt" 1;
     overflow-x: hidden;
     width: 100%;
@@ -99,6 +118,130 @@
 }
 
 @layer components {
+  /* ── Neumorphic surfaces ─────────────────────────────────────────────
+     Two light sources: a faint glint from the top-left and a deep shade
+     to the bottom-right. Raised shapes push out of the page, wells are
+     pressed into it. */
+  .neo-raised {
+    background-color: hsl(var(--card));
+    box-shadow:
+      10px 10px 24px hsl(var(--shade) / 0.70),
+      -6px -6px 18px hsl(var(--glint) / 0.05),
+      inset 0 1px 0 hsl(var(--glint) / 0.07);
+  }
+
+  .neo-raised-sm {
+    background-color: hsl(var(--card));
+    box-shadow:
+      5px 5px 12px hsl(var(--shade) / 0.65),
+      -3px -3px 9px hsl(var(--glint) / 0.05),
+      inset 0 1px 0 hsl(var(--glint) / 0.07);
+  }
+
+  .neo-inset {
+    background-color: hsl(var(--well));
+    box-shadow:
+      inset 5px 5px 12px hsl(var(--shade) / 0.80),
+      inset -3px -3px 8px hsl(var(--glint) / 0.05);
+  }
+
+  /* Clay: an inflated body lit from above, with a shaded belly. */
+  .clay {
+    background-image: linear-gradient(180deg, hsl(0 0% 100% / 0.22) 0%, hsl(0 0% 100% / 0) 46%, hsl(var(--shade) / 0.22) 100%);
+    box-shadow:
+      inset 0 2px 1px hsl(0 0% 100% / 0.38),
+      inset 0 -5px 10px hsl(var(--shade) / 0.30),
+      0 8px 18px hsl(var(--shade) / 0.55);
+  }
+
+  .clay:active {
+    box-shadow:
+      inset 0 4px 10px hsl(var(--shade) / 0.55),
+      inset 0 -1px 0 hsl(0 0% 100% / 0.14);
+  }
+
+  /* Neon light: glows are light, never fills. */
+  .neon-focus:focus-visible,
+  .neon-focus:focus-within {
+    outline: none;
+    box-shadow:
+      inset 5px 5px 12px hsl(var(--shade) / 0.80),
+      0 0 0 1px hsl(var(--neon-cyan) / 0.85),
+      0 0 20px hsl(var(--neon-cyan) / 0.40);
+  }
+
+  .neon-edge-mint {
+    box-shadow:
+      0 0 0 1px hsl(var(--neon-mint) / 0.55),
+      0 0 28px hsl(var(--neon-mint) / 0.22),
+      inset 0 1px 0 hsl(var(--neon-mint) / 0.25);
+  }
+
+  .neon-edge-amber {
+    box-shadow:
+      0 0 0 1px hsl(var(--neon-amber) / 0.55),
+      0 0 28px hsl(var(--neon-amber) / 0.22),
+      inset 0 1px 0 hsl(var(--neon-amber) / 0.25);
+  }
+
+  /* Status LED: a small lit dot. Set --led to an `H S% L%` triplet. */
+  .led {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: hsl(var(--led, var(--neon-cyan)));
+    box-shadow: 0 0 6px hsl(var(--led, var(--neon-cyan)) / 0.9), 0 0 14px hsl(var(--led, var(--neon-cyan)) / 0.5);
+  }
+
+  .led-off {
+    background: hsl(var(--muted-foreground) / 0.25);
+    box-shadow: inset 1px 1px 2px hsl(var(--shade) / 0.8);
+  }
+
+  /* Developer pages: left-aligned, document-style headings. The app-wide
+     rule above centres every heading, which suits cards but not docs. */
+  .dev-page h1,
+  .dev-page h2,
+  .dev-page h3,
+  .dev-page h4,
+  .dev-page .CardTitle,
+  .dev-page h1 + p,
+  .dev-page h2 + p {
+    text-align: left !important;
+  }
+
+  /* Safety net for pages written for a light background. Elements that
+     already carry a `dark:` utility keep it (utilities load after this
+     layer and win the specificity tie); everything else lands on the
+     dark tokens instead of showing as a white box. */
+  .dark .bg-white { background-color: hsl(var(--card)); }
+  .dark .bg-\[\#E5E7EB\] { background-color: hsl(var(--background)); }
+  .dark .bg-\[\#E5E7EB\]\/70 { background-color: hsl(var(--card) / 0.7); }
+  .dark .bg-gray-50,
+  .dark .bg-slate-50,
+  .dark .bg-gray-100,
+  .dark .bg-slate-100 { background-color: hsl(var(--muted)); }
+  .dark .bg-gray-200,
+  .dark .bg-slate-200 { background-color: hsl(var(--secondary)); }
+  .dark .text-gray-900,
+  .dark .text-slate-900,
+  .dark .text-gray-800,
+  .dark .text-slate-800 { color: hsl(var(--foreground)); }
+  .dark .text-gray-700,
+  .dark .text-slate-700,
+  .dark .text-gray-600,
+  .dark .text-slate-600 { color: hsl(var(--foreground) / 0.82); }
+  .dark .text-gray-500,
+  .dark .text-slate-500,
+  .dark .text-gray-400,
+  .dark .text-slate-400 { color: hsl(var(--muted-foreground)); }
+  .dark .border-gray-100,
+  .dark .border-gray-200,
+  .dark .border-gray-300,
+  .dark .border-slate-200,
+  .dark .border-slate-300 { border-color: hsl(var(--border)); }
+
   .glass-card {
     @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm lg:backdrop-blur-xl border border-white/20 dark:border-gray-700/30 shadow-md lg:shadow-xl;
   }

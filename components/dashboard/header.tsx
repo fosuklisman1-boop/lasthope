@@ -56,7 +56,7 @@ export function DashboardHeader() {
             "sticky top-0 z-40 h-16 backdrop-blur-xl border-b transition-colors duration-200",
             isResellerRole(dbUser?.role)
                 ? "bg-gradient-to-b from-yellow-400 via-amber-500 to-amber-600 border-amber-600/20 shadow-sm"
-                : "bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-800"
+                : "bg-background/75 border-white/[0.05] shadow-[0_8px_24px_hsl(var(--shade)/0.35)]"
         )}>
             <div className="h-full px-4 lg:px-8 flex items-center justify-between">
                 {/* Mobile Menu Button */}

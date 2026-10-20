@@ -118,7 +118,7 @@ export function DashboardSidebar() {
                     "fixed left-0 top-0 z-50 h-full flex flex-col transition-all duration-300 ease-in-out",
                     isResellerRole(dbUser?.role)
                         ? "bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 dark:from-yellow-900 dark:via-amber-900 dark:to-yellow-800"
-                        : "bg-[#E5E7EB] dark:bg-[#000000]",
+                        : "bg-card shadow-[10px_0_30px_hsl(var(--shade)/0.55)]",
                     isCollapsed ? "w-20" : "w-80",
                     "transform lg:transform-none",
                     isInternalSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
@@ -278,7 +278,7 @@ export function DashboardSidebar() {
                                             isActive
                                                 ? isResellerRole(dbUser?.role)
                                                     ? "bg-black text-[#FFCE00] shadow-lg"
-                                                    : "bg-yellow-500/20 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
+                                                    : "neo-inset text-primary [text-shadow:0_0_12px_hsl(var(--neon-cyan)/0.5)]"
                                                 : isResellerRole(dbUser?.role)
                                                     ? "text-black hover:text-[#FFCE00] hover:bg-black/10"
                                                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-300/60 dark:hover:bg-gray-800/60 hover:text-gray-900 dark:hover:text-gray-200",
@@ -287,7 +287,7 @@ export function DashboardSidebar() {
                                     >
                                         <item.icon className={cn(
                                             "w-5 h-5 flex-shrink-0",
-                                            isActive && (isResellerRole(dbUser?.role) ? "text-[#FFCE00]" : "text-yellow-600 dark:text-yellow-400")
+                                            isActive && (isResellerRole(dbUser?.role) ? "text-[#FFCE00]" : "text-primary")
                                         )} />
                                         {!isCollapsed && <span className="text-base font-medium">{item.label}</span>}
                                     </div>
@@ -316,7 +316,7 @@ export function DashboardSidebar() {
                                             className={cn(
                                                 "flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-200",
                                                 isActive
-                                                    ? "bg-red-500/20 dark:bg-red-500/10 text-red-600 dark:text-red-400"
+                                                    ? "neo-inset text-[hsl(var(--neon-coral))] [text-shadow:0_0_12px_hsl(var(--neon-coral)/0.5)]"
                                                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-300/60 dark:hover:bg-gray-800/60 hover:text-gray-900 dark:hover:text-gray-200",
                                                 isCollapsed && "justify-center px-2"
                                             )}

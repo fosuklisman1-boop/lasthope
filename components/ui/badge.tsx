@@ -2,7 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-    "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
     {
         variants: {
             variant: {
@@ -14,17 +14,17 @@ const badgeVariants = cva(
                     "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
                 outline: "text-foreground",
                 success:
-                    "border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+                    "border-[hsl(var(--neon-mint)/0.35)] bg-[hsl(var(--neon-mint)/0.12)] text-[hsl(var(--neon-mint))] shadow-[0_0_14px_hsl(var(--neon-mint)/0.18)]",
                 warning:
-                    "border-transparent bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+                    "border-[hsl(var(--neon-amber)/0.35)] bg-[hsl(var(--neon-amber)/0.12)] text-[hsl(var(--neon-amber))] shadow-[0_0_14px_hsl(var(--neon-amber)/0.18)]",
                 pending:
-                    "border-transparent bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+                    "border-[hsl(var(--neon-amber)/0.35)] bg-[hsl(var(--neon-amber)/0.12)] text-[hsl(var(--neon-amber))] shadow-[0_0_14px_hsl(var(--neon-amber)/0.18)]",
                 processing:
-                    "border-transparent bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+                    "border-[hsl(var(--neon-cyan)/0.35)] bg-[hsl(var(--neon-cyan)/0.12)] text-[hsl(var(--neon-cyan))] shadow-[0_0_14px_hsl(var(--neon-cyan)/0.18)]",
                 completed:
-                    "border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+                    "border-[hsl(var(--neon-mint)/0.35)] bg-[hsl(var(--neon-mint)/0.12)] text-[hsl(var(--neon-mint))] shadow-[0_0_14px_hsl(var(--neon-mint)/0.18)]",
                 failed:
-                    "border-transparent bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+                    "border-[hsl(var(--neon-coral)/0.35)] bg-[hsl(var(--neon-coral)/0.12)] text-[hsl(var(--neon-coral))] shadow-[0_0_14px_hsl(var(--neon-coral)/0.18)]",
                 mtn:
                     "border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
                 telecel:

@@ -64,7 +64,7 @@ export default function AdminLayout({
 
     return (
         <UIProvider>
-            <div className="min-h-screen bg-[#E5E7EB] dark:bg-[#000000]">
+            <div className="min-h-screen bg-background">
                 <DashboardSidebar />
                 <div className="lg:pl-72">
                     <DashboardHeader />

@@ -71,7 +71,7 @@ export default function HomePage() {
                             </div>
                         </div>
 
-                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-slate-200 shadow-sm mb-8">
+                        <div className="inline-flex items-center px-4 py-2 rounded-full neo-raised-sm border border-white/[0.05] mb-8">
                             <Zap className="w-4 h-4 text-yellow-500 mr-2" />
                             <span className="text-sm text-slate-700 font-medium">Ultra Fast Instant Delivery</span>
                         </div>

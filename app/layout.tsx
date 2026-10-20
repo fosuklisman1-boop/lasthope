@@ -8,7 +8,7 @@ export const viewport: Viewport = {
     themeColor: '#0f172a',
     interactiveWidget: 'resizes-content', // Helps with virtual keyboard handling
 }
-import { Fira_Sans } from 'next/font/google'
+import { Fira_Sans, Fira_Code } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/contexts/auth-context'
 import { Toaster } from '@/components/ui/sonner'
@@ -17,6 +17,14 @@ const firaSans = Fira_Sans({
     weight: ['300', '400', '500', '600', '700'],
     subsets: ['latin'],
     display: 'swap'
+})
+
+// Keys, URLs and code samples
+const firaCode = Fira_Code({
+    weight: ['400', '500'],
+    subsets: ['latin'],
+    display: 'swap',
+    variable: '--font-fira-code',
 })
 
 export const metadata: Metadata = {
@@ -37,8 +45,8 @@ export default function RootLayout({
     children: React.ReactNode
 }) {
     return (
-        <html lang="en" suppressHydrationWarning>
-            <body className={firaSans.className}>
+        <html lang="en" className="dark" suppressHydrationWarning>
+            <body className={`${firaSans.className} ${firaCode.variable}`}>
                 <AuthProvider>
                     {children}
                     <Toaster position="top-right" richColors />
