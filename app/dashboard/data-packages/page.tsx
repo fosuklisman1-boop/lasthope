@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { formatCurrency, getNetworkGradient, cn } from '@/lib/utils'
-import { getPriceForRole } from '@/lib/pricing'
+import { usePackagePrices } from '@/hooks/use-package-prices'
 import { isResellerRole } from '@/lib/roles'
 import { validateGhanaianPhone, detectNetwork } from '@/lib/phone-validation'
 import { NetworkIcon } from '@/components/network-icon'
@@ -67,6 +67,7 @@ const NETWORKS = ['MTN', 'Telecel', 'AT-iShare', 'AT-BigTime'] as const
 
 export default function DataPackagesPage() {
     const { dbUser, session } = useAuth()
+    const { priceFor } = usePackagePrices()
     const router = useRouter()
 
     // Tutorial hook
@@ -190,7 +191,7 @@ export default function DataPackagesPage() {
 
     // Helper function to get effective price based on user role
     const getEffectivePrice = (pkg: DataPackage) => {
-        return getPriceForRole(pkg as any, dbUser?.role)
+        return priceFor(pkg as any)
     }
 
     const handlePurchaseClick = (pkg: DataPackage) => {

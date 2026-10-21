@@ -42,7 +42,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { getPriceForRole } from '@/lib/pricing'
+import { usePackagePrices } from '@/hooks/use-package-prices'
 
 interface Shop {
     id: string
@@ -130,6 +130,7 @@ function PriceInput({ pkg, cost, onUpdate }: { pkg: PackageConfig, cost: number,
 
 export default function MyShopPage() {
     const { dbUser } = useAuth()
+    const { priceFor } = usePackagePrices()
     const [shop, setShop] = useState<Shop | null>(null)
     const [stats, setStats] = useState<WithdrawalStats | null>(null)
     const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([])
@@ -241,7 +242,7 @@ export default function MyShopPage() {
             const pkg = packages.find(p => p.id === pkgId)
             if (!pkg) return
 
-            const cost = getPriceForRole(pkg as any, dbUser?.role)
+            const cost = priceFor(pkg as any)
             const res = await fetch('/api/user/shop/packages', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -505,13 +506,13 @@ export default function MyShopPage() {
                                                         <div className="grid grid-cols-2 gap-2 text-sm">
                                                             <div>
                                                                 <Label className="text-[10px] uppercase opacity-60">Your Cost</Label>
-                                                                <p className="font-mono">{formatCurrency(getPriceForRole(pkg as any, dbUser?.role))}</p>
+                                                                <p className="font-mono">{formatCurrency(priceFor(pkg as any))}</p>
                                                             </div>
                                                             <div>
                                                                 <Label className="text-[10px] uppercase opacity-60">Selling Price</Label>
                                                                 <PriceInput 
                                                                     pkg={pkg} 
-                                                                    cost={getPriceForRole(pkg as any, dbUser?.role)}
+                                                                    cost={priceFor(pkg as any)}
                                                                     onUpdate={(val) => handleUpdatePackage(pkg.id, { customPrice: val })}
                                                                 />
                                                             </div>
@@ -519,7 +520,7 @@ export default function MyShopPage() {
                                                         <div className="bg-primary/5 rounded p-2 text-center">
                                                             <Label className="text-[10px] uppercase opacity-60">Your Profit</Label>
                                                             <p className="font-bold text-emerald-600">
-                                                                {formatCurrency((pkg.shop_config.custom_price || getPriceForRole(pkg as any, dbUser?.role)) - getPriceForRole(pkg as any, dbUser?.role))}
+                                                                {formatCurrency((pkg.shop_config.custom_price || priceFor(pkg as any)) - priceFor(pkg as any))}
                                                             </p>
                                                         </div>
                                                     </CardContent>

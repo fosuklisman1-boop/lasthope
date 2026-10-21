@@ -1,4 +1,5 @@
-import { getPriceForRole } from '@/lib/pricing'
+import { resolvePrice } from '@/lib/pricing'
+import { loadPricingContext } from '@/lib/pricing-context'
 import { generateReferenceCode } from '@/lib/utils'
 
 export interface PlaceOrderInput {
@@ -38,7 +39,14 @@ export async function placeOrder(input: PlaceOrderInput, supabase: any): Promise
   const { data: u, error: userErr } = await supabase.from('users').select('role').eq('id', userId).maybeSingle()
   if (userErr) return { ok: false, code: 'pricing_unavailable', message: 'Could not resolve pricing', httpStatus: 503 }
   if (!u) return { ok: false, code: 'user_not_found', message: 'Account not found', httpStatus: 404 }
-  const charge = getPriceForRole(pkg, u.role)
+  let charge: number
+  try {
+    charge = resolvePrice(pkg, await loadPricingContext(supabase, userId, u.role))
+  } catch (e: any) {
+    console.error('[placeOrder] pricing failed:', e?.message)
+    return { ok: false, code: 'pricing_unavailable', message: 'Could not resolve pricing', httpStatus: 503 }
+  }
+  if (!(charge > 0)) return { ok: false, code: 'pricing_unavailable', message: 'This package has no valid price', httpStatus: 503 }
 
   const { data: wallet } = await supabase.from('wallets').select('id').eq('user_id', userId).single()
   if (!wallet) return { ok: false, code: 'wallet_not_found', message: 'Wallet not found', httpStatus: 404 }
