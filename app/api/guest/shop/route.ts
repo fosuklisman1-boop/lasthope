@@ -69,8 +69,9 @@ export async function GET(request: NextRequest) {
         }
         const mergedPackages = allPackages.filter(pkg => !blocked.has(pkg.id)).map(pkg => {
             const override = shopOverrides?.find(o => o.package_id === pkg.id)
+            // Only what the storefront needs: no cost price, no reseller tier prices.
             return {
-                ...pkg,
+                id: pkg.id, network: pkg.network, size: pkg.size, description: pkg.description, price: pkg.price,
                 shop_price: shopPrice(resolvePrice(pkg as any, ownerCtx), override, maxMargin),
                 shop_config: override || {
                     is_enabled: true,
@@ -80,10 +81,9 @@ export async function GET(request: NextRequest) {
             }
         })
 
-        return NextResponse.json({ 
-            shop, 
-            packages: mergedPackages 
-        })
+        // The owner's internal id and the shop's admin state are not part of the public page.
+        const publicShop = { id: shop.id, name: shop.name, slug: shop.slug, description: shop.description, logo_url: shop.logo_url, theme_color: shop.theme_color }
+        return NextResponse.json({ shop: publicShop, packages: mergedPackages })
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
