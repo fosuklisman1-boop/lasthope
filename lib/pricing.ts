@@ -70,3 +70,22 @@ export function resolvePriceDetail(pkg: PackagePricing, ctx: PricingContext): { 
 export function resolvePrice(pkg: PackagePricing, ctx: PricingContext): number {
   return resolvePriceDetail(pkg, ctx).price
 }
+
+export interface ShopConfig {
+  custom_price?: number | string | null
+  profit_margin?: number | string | null
+}
+
+/**
+ * What a shop customer pays for a package: the shop's own price if it set one, otherwise the
+ * owner's cost plus the shop's margin, otherwise the owner's cost.
+ */
+export function shopPrice(ownerCost: number, config: ShopConfig | null | undefined): number {
+  if (config) {
+    const custom = Number(config.custom_price)
+    if (custom > 0) return custom
+    const margin = Number(config.profit_margin)
+    if (margin) return ownerCost + margin
+  }
+  return ownerCost
+}

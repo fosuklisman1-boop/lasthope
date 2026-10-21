@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
-import { RESELLER_TIERS } from '@/lib/roles'
 
 export async function GET(request: NextRequest) {
     try {
@@ -10,6 +9,9 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         }
         const supabase = auth.supabase
+
+        const { data: resellerRoles } = await (supabase as any).from('roles').select('slug').eq('is_reseller', true)
+        const resellerSlugs: string[] = (resellerRoles ?? []).map((r: any) => r.slug)
 
         // Add timeout to prevent hanging queries
         const timeoutPromise = new Promise((_, reject) =>
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
                 created_at,
                 updated_at
             `)
-            .in('role', RESELLER_TIERS)
+            .in('role', resellerSlugs)
             .order('created_at', { ascending: false })
 
         const { data: agents, error: fetchError } = await Promise.race([

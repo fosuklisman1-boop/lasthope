@@ -15,12 +15,12 @@ import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { ArrowLeft, Loader2, Wallet, ShoppingCart, MessageSquare, StickyNote, History, UserX, UserCheck } from 'lucide-react'
+import { ArrowLeft, Loader2, Tag, Wallet, ShoppingCart, MessageSquare, StickyNote, History, UserX, UserCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
-import { roleConfig, type UserRole } from '@/lib/roles'
-
-const ROLES = Object.keys(roleConfig) as UserRole[]
+import { getRoleConfig } from '@/lib/roles'
+import { CustomerPrices } from '@/components/admin/customer-prices'
+import { useRoles } from '@/components/providers/roles-provider'
 
 function when(iso?: string | null) {
     if (!iso) return '—'
@@ -40,6 +40,7 @@ function Empty({ children }: { children: React.ReactNode }) {
 }
 
 export default function AdminUserDetailPage() {
+    const { roles: roleOptions } = useRoles()
     const { id } = useParams<{ id: string }>()
     const [data, setData] = useState<any>(null)
     const [loading, setLoading] = useState(true)
@@ -161,7 +162,7 @@ export default function AdminUserDetailPage() {
                     <div className="min-w-0 space-y-2">
                         <div className="flex flex-wrap items-center gap-3">
                             <h1 className="text-2xl font-bold tracking-tight">{name}</h1>
-                            <Badge variant="secondary">{roleConfig[user.role as UserRole]?.label ?? user.role}</Badge>
+                            <Badge variant="secondary">{getRoleConfig(user.role).label}</Badge>
                             <Badge variant={statusVariant(user.status)}>{user.status}</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">
@@ -173,7 +174,7 @@ export default function AdminUserDetailPage() {
                         <Select value={user.role} onValueChange={changeRole}>
                             <SelectTrigger className="w-44" aria-label="Change role"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                {ROLES.map(r => <SelectItem key={r} value={r}>{roleConfig[r].label}</SelectItem>)}
+                                {roleOptions.map(r => <SelectItem key={r.slug} value={r.slug}>{r.label}</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <Button onClick={() => setAdjustOpen(true)}><Wallet className="mr-2 h-4 w-4" />Adjust wallet</Button>
@@ -215,6 +216,7 @@ export default function AdminUserDetailPage() {
                     <TabsList className="w-max">
                         <TabsTrigger value="orders" className="gap-2"><ShoppingCart className="h-4 w-4" />Orders</TabsTrigger>
                         <TabsTrigger value="wallet" className="gap-2"><Wallet className="h-4 w-4" />Wallet</TabsTrigger>
+                        <TabsTrigger value="prices" className="gap-2"><Tag className="h-4 w-4" />Prices</TabsTrigger>
                         <TabsTrigger value="support" className="gap-2"><MessageSquare className="h-4 w-4" />Support</TabsTrigger>
                         <TabsTrigger value="notes" className="gap-2"><StickyNote className="h-4 w-4" />Notes ({data.notes.length})</TabsTrigger>
                         <TabsTrigger value="activity" className="gap-2"><History className="h-4 w-4" />Admin activity</TabsTrigger>
@@ -271,6 +273,10 @@ export default function AdminUserDetailPage() {
                             </Table>
                         )}
                     </CardContent></Card>
+                </TabsContent>
+
+                <TabsContent value="prices">
+                    <CustomerPrices userId={user.id} roleLabel={getRoleConfig(user.role).label} />
                 </TabsContent>
 
                 <TabsContent value="support">

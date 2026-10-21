@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
-import { roleConfig, type UserRole } from '@/lib/roles'
+import { getRoleConfig } from '@/lib/roles'
+import { useRoles } from '@/components/providers/roles-provider'
 import type { Trend } from '@/lib/reports'
 
 interface Row {
@@ -39,6 +40,7 @@ const TREND: Record<Trend, { label: string; variant: 'success' | 'pending' | 'fa
 }
 
 export default function ResellersPage() {
+    useRoles()
     const [days, setDays] = useState('30')
     const [trend, setTrend] = useState('all')
     const [rows, setRows] = useState<Row[]>([])
@@ -141,7 +143,7 @@ export default function ResellersPage() {
                                             <Link href={`/admin/users/${r.user_id}`} className="font-medium text-primary hover:underline">{name}</Link>
                                             <p className="text-xs text-muted-foreground">{r.orders_cur} orders · {r.email}</p>
                                         </TableCell>
-                                        <TableCell>{roleConfig[r.role as UserRole]?.label ?? r.role}</TableCell>
+                                        <TableCell>{getRoleConfig(r.role).label}</TableCell>
                                         <TableCell className="text-right font-medium">{formatCurrency(r.revenue_cur)}</TableCell>
                                         <TableCell className="text-right text-muted-foreground">{formatCurrency(r.revenue_prev)}</TableCell>
                                         <TableCell>

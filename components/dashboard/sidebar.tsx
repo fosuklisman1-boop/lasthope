@@ -37,7 +37,9 @@ import {
     Activity,
     BarChart3,
     Trophy,
-    ShieldCheck
+    ShieldCheck,
+    Tags,
+    Table2
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -64,6 +66,8 @@ const adminNavItems = [
     { href: '/admin/memberships', label: 'Agent Members', icon: Crown },
     { href: '/admin/users', label: 'Users', icon: Users },
     { href: '/admin/packages', label: 'Packages', icon: Package },
+    { href: '/admin/price-tables', label: 'Price Tables', icon: Table2 },
+    { href: '/admin/roles', label: 'Roles', icon: Tags },
     { href: '/admin/api-keys', label: 'API Keys', icon: KeyRound },
     { href: '/admin/webhooks', label: 'Webhooks', icon: Webhook },
     { href: '/admin/complaints', label: 'Complaints', icon: MessageSquare },
@@ -80,7 +84,8 @@ const adminNavItems = [
     { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
-import { roleConfig, isResellerRole } from '@/lib/roles'
+import { getRoleConfig, isResellerRole } from '@/lib/roles'
+import { useRoles } from '@/components/providers/roles-provider'
 
 export function DashboardSidebar() {
     const pathname = usePathname()
@@ -123,8 +128,9 @@ export function DashboardSidebar() {
     }
 
     // Get role config
-    const userRole = isAdmin ? 'admin' : isSubAdmin ? 'sub-admin' : (dbUser?.role || 'user') as keyof typeof roleConfig
-    const currentRole = roleConfig[userRole] || roleConfig['user']
+    const userRole = isAdmin ? 'admin' : isSubAdmin ? 'sub-admin' : (dbUser?.role || 'user')
+    useRoles() // re-render when the role list loads
+    const currentRole = getRoleConfig(userRole)
     const RoleIcon = currentRole.icon
 
     return (

@@ -15,7 +15,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { roleConfig, isResellerRole } from '@/lib/roles'
+import { getRoleConfig, isResellerRole } from '@/lib/roles'
+import { useRoles } from '@/components/providers/roles-provider'
 import { supabase } from '@/lib/supabase'
 import { Menu, Sun, Moon, Bell, User, Settings, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -47,8 +48,9 @@ export function DashboardHeader() {
     }
 
     // Get role config
-    const userRole = isAdmin ? 'admin' : isSubAdmin ? 'sub-admin' : (dbUser?.role || 'user') as keyof typeof roleConfig
-    const currentRole = roleConfig[userRole] || roleConfig['user']
+    const userRole = isAdmin ? 'admin' : isSubAdmin ? 'sub-admin' : (dbUser?.role || 'user')
+    useRoles() // re-render when the role list loads
+    const currentRole = getRoleConfig(userRole)
     const RoleIcon = currentRole.icon
 
     return (

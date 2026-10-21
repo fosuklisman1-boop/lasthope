@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
 import { logAudit } from '@/lib/audit'
 
-const ALLOWED_ROLES = ['admin', 'sub-admin', 'agent', 'super-agent', 'premium-agent', 'dealer', 'user']
-
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAdmin()
@@ -13,7 +11,8 @@ export async function POST(request: NextRequest) {
 
     const { userId, role } = await request.json()
     if (!userId || !role) return NextResponse.json({ error: 'userId and role are required' }, { status: 400 })
-    if (!ALLOWED_ROLES.includes(role)) return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+    const { data: roleRow } = await (supabase as any).from('roles').select('slug').eq('slug', role).maybeSingle()
+    if (!roleRow) return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
 
     const { data: before } = await (supabase.from('users') as any).select('role, email').eq('id', userId).single()
 

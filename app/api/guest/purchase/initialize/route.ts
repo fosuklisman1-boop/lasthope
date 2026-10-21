@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { calculatePaystackFee, generateReferenceCode } from '@/lib/utils'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
-import { resolvePrice } from '@/lib/pricing'
+import { resolvePrice, shopPrice } from '@/lib/pricing'
 import { loadPricingContext } from '@/lib/pricing-context'
 import { isPaymentMaintenance, MAINTENANCE_MESSAGE } from '@/lib/maintenance'
 
@@ -93,19 +93,7 @@ export async function POST(request: NextRequest) {
                         console.error('[GuestPurchase] Config fetch error:', configErr.message)
                     }
 
-                    if (shopConfig) {
-                        console.log('[GuestPurchase] Shop config found:', shopConfig)
-                        if (shopConfig.custom_price && Number(shopConfig.custom_price) > 0) {
-                            priceToCharge = Number(shopConfig.custom_price)
-                        } else if (shopConfig.profit_margin) {
-                            priceToCharge = costPrice + Number(shopConfig.profit_margin)
-                        } else {
-                            priceToCharge = costPrice
-                        }
-                    } else {
-                        console.log('[GuestPurchase] No shop config found, using cost price.')
-                        priceToCharge = costPrice
-                    }
+                    priceToCharge = shopPrice(costPrice, shopConfig)
 
                     profitAmount = priceToCharge - costPrice
                     console.log('[GuestPurchase] Calculated priceToCharge:', priceToCharge, 'Profit:', profitAmount)

@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
-import { supabase } from '@/lib/supabase'
-import { RESELLER_TIERS, roleConfig, UserRole, isResellerRole } from '@/lib/roles'
+import { getRoleConfig, isResellerRole } from '@/lib/roles'
 import { Button } from '@/components/ui/button'
 import { Crown, Zap, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -13,7 +12,16 @@ import { cn } from '@/lib/utils'
 import { useTutorial } from '@/hooks/useTutorial'
 import { HelpButton } from '@/components/tutorial/HelpButton'
 
-// Per-tier card styling
+// Per-tier card styling. The four built-in tiers have their own look; any other role
+// an admin adds gets this neutral card, with its badge in the role's colour.
+const DEFAULT_TIER_STYLE = {
+    color: 'border-white/15',
+    buttonClass: 'bg-primary text-primary-foreground',
+    badgeColor: 'from-slate-500 to-slate-600',
+    priceColor: 'text-foreground',
+    bgClass: 'bg-card',
+    popular: false,
+}
 const TIER_STYLE: Record<string, { color: string; buttonClass: string; badgeColor: string; priceColor: string; bgClass: string; popular: boolean }> = {
     'agent': {
         color: 'border-white/15',
@@ -77,28 +85,25 @@ export default function UpgradePage() {
     const [isLoading, setIsLoading] = useState(true)
     const [isProcessing, setIsProcessing] = useState<string | null>(null)
 
-    // Fetch tier prices from admin_settings (public-read RLS)
+    // Roles an admin has switched on for purchase, cheapest first
+    const [tiers, setTiers] = useState<string[]>([])
     useEffect(() => {
-        const keys = RESELLER_TIERS.map(t => 'upgrade_price_' + t.replace(/-/g, '_'))
-        supabase
-            .from('admin_settings')
-            .select('key, value')
-            .in('key', keys)
-            .then(({ data, error }) => {
-                if (error) {
-                    console.error('Failed to fetch upgrade prices:', error)
-                    toast.error('Failed to load upgrade prices.')
-                } else {
-                    const rows = (data ?? []) as { key: string; value: string }[]
-                    const map: Record<string, number> = {}
-                    for (const t of RESELLER_TIERS) {
-                        const key = 'upgrade_price_' + t.replace(/-/g, '_')
-                        map[t] = Number(rows.find(r => r.key === key)?.value || 0)
-                    }
-                    setPrices(map)
-                }
-                setIsLoading(false)
+        let cancelled = false
+        fetch('/api/roles', { cache: 'no-store' })
+            .then(res => (res.ok ? res.json() : Promise.reject(new Error('roles unavailable'))))
+            .then(json => {
+                if (cancelled) return
+                const buyable = (json.roles as { slug: string; upgradable: boolean; upgrade_price: number | null }[])
+                    .filter(r => r.upgradable && r.upgrade_price && r.upgrade_price > 0 && !['admin', 'sub-admin', 'user'].includes(r.slug))
+                    .sort((a, b) => (a.upgrade_price as number) - (b.upgrade_price as number))
+                const map: Record<string, number> = {}
+                for (const r of buyable) map[r.slug] = r.upgrade_price as number
+                setPrices(map)
+                setTiers(buyable.map(r => r.slug))
             })
+            .catch(() => toast.error('Failed to load upgrade prices.'))
+            .finally(() => { if (!cancelled) setIsLoading(false) })
+        return () => { cancelled = true }
     }, [])
 
     const [isVerifying, setIsVerifying] = useState(false)
@@ -109,7 +114,7 @@ export default function UpgradePage() {
 
         if (success) {
             const verifyAndShowCongrats = async () => {
-                const isReseller = dbUser?.role && RESELLER_TIERS.includes(dbUser.role as UserRole)
+                const isReseller = isResellerRole(dbUser?.role)
 
                 let isRecentlyUpdated = false
                 if (dbUser?.updated_at) {
@@ -158,7 +163,7 @@ export default function UpgradePage() {
         }
     }, [isVerifying])
 
-    async function startUpgrade(tier: UserRole) {
+    async function startUpgrade(tier: string) {
         setIsProcessing(tier)
         try {
             const res = await fetch('/api/user/upgrade/initialize', {
@@ -265,9 +270,9 @@ export default function UpgradePage() {
 
                     {/* Tier Cards Grid */}
                     <div id="pricing-plans" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 lg:gap-6 mb-12 w-full max-w-5xl items-stretch">
-                        {RESELLER_TIERS.map((tier) => {
-                            const style = TIER_STYLE[tier]
-                            const config = roleConfig[tier]
+                        {tiers.map((tier) => {
+                            const style = TIER_STYLE[tier] ?? DEFAULT_TIER_STYLE
+                            const config = getRoleConfig(tier)
                             const Icon = config.icon
                             const price = prices[tier]
                             const hasPrice = price && price > 0
@@ -283,7 +288,7 @@ export default function UpgradePage() {
                                     )}
                                 >
                                     {/* Badge */}
-                                    <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-1.5 bg-gradient-to-r ${style.badgeColor} rounded-full shadow-lg z-20 flex items-center gap-1.5 sm:gap-2`}>
+                                    <div style={!TIER_STYLE[tier] ? { backgroundImage: 'none', backgroundColor: config.color } : undefined} className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-1.5 bg-gradient-to-r ${style.badgeColor} rounded-full shadow-lg z-20 flex items-center gap-1.5 sm:gap-2`}>
                                         <Icon className="w-3 h-3 text-white" />
                                         <span className="text-[10px] font-black text-white uppercase tracking-wider sm:tracking-widest">
                                             {config.label}
@@ -330,7 +335,7 @@ export default function UpgradePage() {
                                     </div>
 
                                     <Button
-                                        onClick={() => startUpgrade(tier as UserRole)}
+                                        onClick={() => startUpgrade(tier)}
                                         disabled={isProcessing !== null || !hasPrice}
                                         className={`clay w-full h-11 sm:h-12 rounded-xl text-sm sm:text-base font-black transition-all active:translate-y-px text-white ${style.buttonClass}`}
                                     >

@@ -1,21 +1,14 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@/lib/supabase'
 import { RESELLER_TIERS } from '@/lib/roles'
 
 export async function GET() {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    )
-    const keys = RESELLER_TIERS.map(t => 'upgrade_price_' + t.replace(/-/g, '_'))
-    const { data, error } = await supabase.from('admin_settings').select('key, value').in('key', keys)
+    const { data, error } = await (createServerClient() as any).from('roles').select('slug, upgrade_price').in('slug', RESELLER_TIERS)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     const prices: Record<string, number> = {}
     for (const t of RESELLER_TIERS) {
-      const key = 'upgrade_price_' + t.replace(/-/g, '_')
-      prices[t] = parseFloat(data?.find(s => s.key === key)?.value || '0')
+      prices[t] = Number(data?.find((r: any) => r.slug === t)?.upgrade_price ?? 0)
     }
     return NextResponse.json({ prices })
   } catch (e: any) {

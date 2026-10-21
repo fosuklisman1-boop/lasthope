@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
+import { resolvePrice, shopPrice } from '@/lib/pricing'
+import { loadPricingContext } from '@/lib/pricing-context'
 
 export async function GET(request: NextRequest) {
     try {
@@ -40,11 +42,20 @@ export async function GET(request: NextRequest) {
             .select('*')
             .eq('shop_id', shop.id)
 
-        // 3. Merge and filter enabled packages
+        // 3. Merge, and price each package the way checkout will: the owner's cost (their role's
+        //    price table or their own custom price) plus the shop's margin or custom price.
+        let ownerCtx
+        try {
+            ownerCtx = await loadPricingContext(supabase, shop.user_id)
+        } catch (e: any) {
+            console.error('[guest/shop] owner pricing failed:', e?.message)
+            return NextResponse.json({ error: 'Prices are temporarily unavailable' }, { status: 503 })
+        }
         const mergedPackages = allPackages.map(pkg => {
             const override = shopOverrides?.find(o => o.package_id === pkg.id)
             return {
                 ...pkg,
+                shop_price: shopPrice(resolvePrice(pkg as any, ownerCtx), override),
                 shop_config: override || {
                     is_enabled: true,
                     custom_price: null,

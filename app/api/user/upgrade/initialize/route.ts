@@ -3,7 +3,6 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { generateReferenceCode } from '@/lib/utils'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { RESELLER_TIERS, isResellerRole } from '@/lib/roles'
 import { isPaymentMaintenance, MAINTENANCE_MESSAGE } from '@/lib/maintenance'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
@@ -26,8 +25,7 @@ export async function POST(request: Request) {
 
         const { tier } = await request.json().catch(() => ({}));
 
-        // Validate tier
-        if (!RESELLER_TIERS.includes(tier)) {
+        if (typeof tier !== 'string' || !tier) {
             return NextResponse.json({ error: 'Invalid tier' }, { status: 400 })
         }
 
@@ -52,15 +50,7 @@ export async function POST(request: Request) {
 
         console.log('[UpgradeAPI] DB User Role:', dbUser?.role)
 
-        if (!(dbUser?.role === 'user' || isResellerRole(dbUser?.role))) {
-            console.error('[UpgradeAPI] Invalid role for upgrade:', dbUser?.role)
-            return NextResponse.json(
-                { error: 'Upgrades are only available to customers and existing reseller tiers.' },
-                { status: 400 }
-            )
-        }
-
-        // Fetch upgrade price from admin settings using service role to bypass RLS
+        // Fetch roles and prices with the service role (the roles table is server-only)
         const { createClient } = await import('@supabase/supabase-js')
         const supabaseAdmin = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -73,10 +63,24 @@ export async function POST(request: Request) {
             }
         )
 
-        const settingKey = 'upgrade_price_' + tier.replace(/-/g, '_')
-        const { data: settingRow } = await supabaseAdmin
-            .from('admin_settings').select('value').eq('key', settingKey).single()
-        const upgradePrice = settingRow ? Number((settingRow as any).value) : 0
+        // Who may upgrade: customers and existing resellers (never admins)
+        const { data: currentRole } = await (supabaseAdmin as any).from('roles')
+            .select('slug, is_reseller').eq('slug', dbUser?.role ?? '').maybeSingle()
+        if (!currentRole || !(currentRole.slug === 'user' || currentRole.is_reseller)) {
+            console.error('[UpgradeAPI] Invalid role for upgrade:', dbUser?.role)
+            return NextResponse.json(
+                { error: 'Upgrades are only available to customers and existing reseller tiers.' },
+                { status: 400 }
+            )
+        }
+
+        // What can be bought: a role switched on for purchase with a price. Admin roles never can be.
+        const { data: targetRole } = await (supabaseAdmin as any).from('roles')
+            .select('slug, label, upgrade_price, upgradable').eq('slug', tier).maybeSingle()
+        if (!targetRole || !targetRole.upgradable || ['admin', 'sub-admin', 'user'].includes(targetRole.slug)) {
+            return NextResponse.json({ error: 'Invalid tier' }, { status: 400 })
+        }
+        const upgradePrice = Number(targetRole.upgrade_price)
         if (!upgradePrice || upgradePrice <= 0) {
             return NextResponse.json({ error: 'Upgrade price not configured for ' + tier }, { status: 400 })
         }

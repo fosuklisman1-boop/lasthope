@@ -16,10 +16,12 @@ export async function POST(request: NextRequest) {
 
     for (const t of RESELLER_TIERS) {
       if (prices[t] === undefined) continue
-      const key = 'upgrade_price_' + t.replace(/-/g, '_')
-      await supabaseAdmin.from('admin_settings').delete().eq('key', key)
-      const { error } = await supabaseAdmin.from('admin_settings').insert({ key, value: String(prices[t]) } as any)
-      if (error) return NextResponse.json({ error: `Failed to update ${key}: ${error.message}` }, { status: 500 })
+      const v = Number(prices[t])
+      const valid = Number.isFinite(v) && v > 0 && v <= 100000
+      // A tier with no valid price is taken off the Upgrade page.
+      const patch = valid ? { upgrade_price: Math.round(v * 100) / 100, upgradable: true } : { upgrade_price: null, upgradable: false }
+      const { error } = await (supabaseAdmin as any).from('roles').update(patch).eq('slug', t)
+      if (error) return NextResponse.json({ error: `Failed to update the ${t} price: ${error.message}` }, { status: 500 })
     }
     await logAudit(auth, {
       action: 'prices.update',

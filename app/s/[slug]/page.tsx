@@ -33,6 +33,7 @@ interface PackageConfig {
     size: string
     price: number
     agent_price: number
+    shop_price: number
     shop_config: {
         is_enabled: boolean
         custom_price: number | null
@@ -174,7 +175,7 @@ export default function StorefrontPage() {
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {packages.filter(p => p.network === network).map(pkg => {
-                                        const finalPrice = pkg.shop_config.custom_price || (pkg.price + pkg.shop_config.profit_margin)
+                                        const finalPrice = pkg.shop_price
                                         const isSelected = selectedPkg?.id === pkg.id
                                         
                                         return (
@@ -225,7 +226,7 @@ export default function StorefrontPage() {
                                         <div className="flex items-center justify-between pt-2 border-t mt-2">
                                             <span className="text-sm">Total Amount</span>
                                             <span className="text-xl font-black text-primary">
-                                                {formatCurrency(selectedPkg.shop_config.custom_price || (selectedPkg.price + selectedPkg.shop_config.profit_margin))}
+                                                {formatCurrency(selectedPkg.shop_price)}
                                             </span>
                                         </div>
                                     </div>
@@ -273,7 +274,7 @@ export default function StorefrontPage() {
                                             {isProcessing ? (
                                                 <Loader2 className="w-5 h-5 animate-spin" />
                                             ) : (
-                                                `Buy Now • ${selectedPkg ? formatCurrency(selectedPkg.shop_config.custom_price || (selectedPkg.price + selectedPkg.shop_config.profit_margin)) : ''}`
+                                                `Buy Now • ${selectedPkg ? formatCurrency(selectedPkg.shop_price) : ''}`
                                             )}
                                         </Button>
                                     </div>

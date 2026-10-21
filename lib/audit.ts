@@ -27,6 +27,14 @@ export const AUDIT_ACTIONS = [
     'announcement.post',
     'system.maintenance',
     'security.2fa',
+    'role.create',
+    'role.update',
+    'role.delete',
+    'price_table.create',
+    'price_table.update',
+    'price_table.delete',
+    'customer_price.set',
+    'customer_price.clear',
 ] as const
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]

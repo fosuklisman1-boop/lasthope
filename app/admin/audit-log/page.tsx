@@ -47,14 +47,17 @@ const FILTERS: { value: string; label: string }[] = [
     { value: 'sms.*', label: 'SMS broadcasts' },
     { value: 'system.*', label: 'System' },
     { value: 'security.*', label: 'Security' },
+    { value: 'role.*', label: 'Roles' },
+    { value: 'price_table.*', label: 'Price tables' },
+    { value: 'customer_price.*', label: 'Customer prices' },
 ]
 
 // One neon colour per area, so the log can be scanned by eye.
 function areaColor(action: string): string {
     const area = action.split('.')[0]
-    if (area === 'wallet' || area === 'withdrawal' || area === 'payment') return 'var(--neon-amber)'
+    if (area === 'wallet' || area === 'withdrawal' || area === 'payment' || area === 'price_table' || area === 'customer_price') return 'var(--neon-amber)'
     if (area === 'order' || area === 'complaint') return 'var(--neon-cyan)'
-    if (area === 'user' || area === 'api_key' || area === 'webhook') return 'var(--neon-violet)'
+    if (area === 'user' || area === 'api_key' || area === 'webhook' || area === 'role') return 'var(--neon-violet)'
     if (area === 'system' || area === 'security') return 'var(--neon-coral)'
     return 'var(--neon-mint)'
 }

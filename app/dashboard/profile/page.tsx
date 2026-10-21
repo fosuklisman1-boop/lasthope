@@ -33,7 +33,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate, cn } from '@/lib/utils'
-import { roleConfig, UserRole, isResellerRole } from '@/lib/roles'
+import { getRoleConfig, UserRole, isResellerRole } from '@/lib/roles'
 import { useTutorial } from '@/hooks/useTutorial'
 import { HelpButton } from '@/components/tutorial/HelpButton'
 
@@ -202,7 +202,7 @@ export default function ProfilePage() {
                     <div className="flex items-center gap-4">
                         {(() => {
                             const userRole = (dbUser?.role || 'user') as UserRole
-                            const config = roleConfig[userRole] || roleConfig['user']
+                            const config = getRoleConfig(userRole)
                             const RoleIcon = config.icon
                             return (
                                 <div

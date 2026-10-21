@@ -48,7 +48,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { roleConfig, UserRole } from '@/lib/roles'
+import { getRoleConfig, UserRole } from '@/lib/roles'
+import { useRoles } from '@/components/providers/roles-provider'
 
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<any[]>([])
@@ -56,6 +57,8 @@ export default function AdminUsersPage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [debouncedSearch, setDebouncedSearch] = useState('')
     const [roleFilter, setRoleFilter] = useState('all')
+    const { roles: roleOptions } = useRoles()
+    const menuRoles = [...roleOptions.filter(r => !['admin', 'sub-admin'].includes(r.slug)), ...roleOptions.filter(r => ['sub-admin', 'admin'].includes(r.slug))]
     const [page, setPage] = useState(0)
     const [totalCount, setTotalCount] = useState(0)
     const [hasMore, setHasMore] = useState(true)
@@ -322,13 +325,7 @@ export default function AdminUsersPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Roles</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="sub-admin">Sub-Admin</SelectItem>
-                                <SelectItem value="dealer">Dealer</SelectItem>
-                                <SelectItem value="premium-agent">Premium Agent</SelectItem>
-                                <SelectItem value="super-agent">Super Agent</SelectItem>
-                                <SelectItem value="agent">Agent</SelectItem>
-                                <SelectItem value="user">Customer</SelectItem>
+                                {roleOptions.map(r => <SelectItem key={r.slug} value={r.slug}>{r.label}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
@@ -370,7 +367,7 @@ export default function AdminUsersPage() {
                                         <div className="flex gap-4 items-center">
                                             {(() => {
                                                 const userRole = (user.role || 'user') as UserRole
-                                                const config = roleConfig[userRole] || roleConfig['user']
+                                                const config = getRoleConfig(userRole)
                                                 const RoleIcon = config.icon
                                                 return (
                                                     <div
@@ -386,7 +383,7 @@ export default function AdminUsersPage() {
                                                 <div className="flex items-center gap-2 mt-1">
                                                     {(() => {
                                                         const userRole = (user.role || 'user') as UserRole
-                                                        const cfg = roleConfig[userRole] || roleConfig['user']
+                                                        const cfg = getRoleConfig(userRole)
                                                         const isLight = userRole === 'sub-admin'
                                                         return (
                                                             <Badge
@@ -442,48 +439,12 @@ export default function AdminUsersPage() {
                                                 </DropdownMenuItem>
                                                 {/* Role Change Menu */}
                                                 <DropdownMenuLabel className="text-xs text-muted-foreground pt-2">Change Role</DropdownMenuLabel>
-                                                {user.role !== 'user' && (
-                                                    <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'user')}>
-                                                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: '#0056B3' }} />
-                                                        Make Customer
+                                                {menuRoles.filter(r => r.slug !== user.role).map(r => (
+                                                    <DropdownMenuItem key={r.slug} onClick={() => handleRoleChange(user.id, r.slug)}>
+                                                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: r.color }} />
+                                                        Make {r.label}
                                                     </DropdownMenuItem>
-                                                )}
-                                                {user.role !== 'agent' && (
-                                                    <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'agent')}>
-                                                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: roleConfig['agent'].color }} />
-                                                        Make {roleConfig['agent'].label}
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {user.role !== 'super-agent' && (
-                                                    <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'super-agent')}>
-                                                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: roleConfig['super-agent'].color }} />
-                                                        Make {roleConfig['super-agent'].label}
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {user.role !== 'premium-agent' && (
-                                                    <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'premium-agent')}>
-                                                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: roleConfig['premium-agent'].color }} />
-                                                        Make {roleConfig['premium-agent'].label}
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {user.role !== 'dealer' && (
-                                                    <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'dealer')}>
-                                                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: roleConfig['dealer'].color }} />
-                                                        Make {roleConfig['dealer'].label}
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {user.role !== 'sub-admin' && (
-                                                    <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'sub-admin')}>
-                                                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: '#FACC15' }} />
-                                                        Make Sub-Admin
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {user.role !== 'admin' && (
-                                                    <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'admin')}>
-                                                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: '#E60000' }} />
-                                                        Make Admin
-                                                    </DropdownMenuItem>
-                                                )}
+                                                ))}
 
                                                 <div className="h-px bg-border my-1" />
 

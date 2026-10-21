@@ -303,7 +303,8 @@ export async function processCompletedUpgradePayment(reference: string, provider
     // 6. Send SMS notification
     try {
         if (user.phone_number) {
-            const tierLabel = roleConfig[targetRole as keyof typeof roleConfig]?.label || targetRole
+            const { data: roleRow } = await (supabase as any).from('roles').select('label').eq('slug', targetRole).maybeSingle()
+            const tierLabel = roleRow?.label || roleConfig[targetRole as keyof typeof roleConfig]?.label || targetRole
             await sendRoleUpgradeSuccessSMS(
                 user.phone_number,
                 user.first_name || 'Member',
