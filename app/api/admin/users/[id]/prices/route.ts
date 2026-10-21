@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/require-admin'
 import { logAudit } from '@/lib/audit'
 import { resolvePriceDetail } from '@/lib/pricing'
 import { loadPricingContext } from '@/lib/pricing-context'
-import { parsePrice, belowCost } from '@/lib/price-tables'
+import { parsePrice, belowCost, parseItemUpdates, diffItems } from '@/lib/price-tables'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,10 +67,53 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
     const db = auth.supabase as any
 
     const body = await request.json().catch(() => ({}))
-    const packageId = typeof body.packageId === 'string' ? body.packageId : ''
-    if (!UUID_RE.test(packageId)) return NextResponse.json({ error: 'packageId is required' }, { status: 400 })
     const reason = typeof body.reason === 'string' ? body.reason.trim() : ''
     if (reason.length < 5) return NextResponse.json({ error: 'A reason of at least 5 characters is required' }, { status: 400 })
+
+    // Many prices at once (the bulk tools): one reason, one audit entry.
+    if (Array.isArray(body.items)) {
+        const parsedItems = parseItemUpdates(body.items)
+        if (!parsedItems.ok) return NextResponse.json({ error: parsedItems.error }, { status: 400 })
+        const ids = parsedItems.items.map(i => i.packageId)
+
+        const [{ data: owner }, pkgRes, curRes] = await Promise.all([
+            db.from('users').select('id, email').eq('id', id).maybeSingle(),
+            db.from('data_packages').select('id, network, size, cost_price').in('id', ids),
+            db.from('customer_prices').select('package_id, price').eq('user_id', id).in('package_id', ids),
+        ])
+        if (!owner) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        const known = new Map<string, any>((pkgRes.data ?? []).map((p: any) => [p.id, p]))
+        if (ids.some(i => !known.has(i))) return NextResponse.json({ error: 'Some packages no longer exist. Reload the page.' }, { status: 400 })
+
+        const current = new Map<string, number>((curRes.data ?? []).map((r: any) => [r.package_id, Number(r.price)]))
+        const changes = diffItems(current, parsedItems.items)
+        if (changes.length === 0) return NextResponse.json({ success: true, changed: 0 })
+
+        const now = new Date().toISOString()
+        const sets = changes.filter(c => c.to !== null).map(c => ({ user_id: id, package_id: c.packageId, price: c.to, set_by: auth.userId, reason, updated_at: now }))
+        const clears = changes.filter(c => c.to === null).map(c => c.packageId)
+        if (sets.length) {
+            const { error } = await db.from('customer_prices').upsert(sets, { onConflict: 'user_id,package_id' })
+            if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+        }
+        if (clears.length) {
+            const { error } = await db.from('customer_prices').delete().eq('user_id', id).in('package_id', clears)
+            if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+        }
+
+        const name = (pid: string) => { const p = known.get(pid); return p ? `${p.network} ${p.size}` : pid }
+        const loss = changes.filter(c => belowCost(c.to, known.get(c.packageId)?.cost_price)).length
+        await logAudit(auth, {
+            action: 'customer_price.set', targetType: 'user', targetId: id,
+            summary: `Changed ${changes.length} custom price${changes.length === 1 ? '' : 's'} for a customer${loss ? ` (${loss} below cost)` : ''}`,
+            details: { changes: changes.slice(0, 50).map(c => ({ package: name(c.packageId), from: c.from, to: c.to })), total: changes.length, belowCost: loss, email: owner.email, userId: id },
+            reason,
+        }, request)
+        return NextResponse.json({ success: true, changed: changes.length, belowCost: loss })
+    }
+
+    const packageId = typeof body.packageId === 'string' ? body.packageId : ''
+    if (!UUID_RE.test(packageId)) return NextResponse.json({ error: 'packageId is required' }, { status: 400 })
 
     const [{ data: user }, { data: pkg }] = await Promise.all([
         db.from('users').select('id, email').eq('id', id).maybeSingle(),

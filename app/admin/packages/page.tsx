@@ -38,10 +38,12 @@ import {
     Trash2,
     Loader2,
     Package,
-    FileEdit
+    FileEdit,
+    Calculator
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DataPackage } from '@/types/supabase'
+import { BulkPackagePricing } from '@/components/admin/bulk-package-pricing'
 
 const NETWORKS = ['MTN', 'Telecel', 'AT-iShare', 'AT-BigTime'] as const
 
@@ -72,6 +74,7 @@ export default function AdminPackagesPage() {
     const [editingPackage, setEditingPackage] = useState<DataPackage | null>(null)
     const [formData, setFormData] = useState<PackageFormData>(defaultFormData)
     const [isSaving, setIsSaving] = useState(false)
+    const [bulkOpen, setBulkOpen] = useState(false)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [isNetworkDescDialogOpen, setIsNetworkDescDialogOpen] = useState(false)
     const [editingNetwork, setEditingNetwork] = useState<typeof NETWORKS[number] | null>(null)
@@ -237,11 +240,24 @@ export default function AdminPackagesPage() {
                     <h1 className="text-2xl font-bold">Data Packages</h1>
                     <p className="text-muted-foreground">Manage available data packages</p>
                 </div>
-                <Button onClick={openCreateDialog}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Package
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" onClick={() => setBulkOpen(true)} disabled={packages.length === 0}>
+                        <Calculator className="w-4 h-4 mr-2" />
+                        Bulk pricing
+                    </Button>
+                    <Button onClick={openCreateDialog}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Package
+                    </Button>
+                </div>
             </div>
+
+            <BulkPackagePricing
+                packages={packages.map(p => ({ id: p.id, network: p.network, size: p.size, price: Number(p.price), cost_price: Number((p as any).cost_price) || 0 }))}
+                open={bulkOpen}
+                onOpenChange={setBulkOpen}
+                onDone={fetchPackages}
+            />
 
             {/* Network-based Card Grid */}
             {NETWORKS.map(network => {

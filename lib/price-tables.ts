@@ -68,3 +68,66 @@ export function discountedPrice(base: number, percent: number): number | null {
     const p = Math.round(base * (1 - percent / 100) * 100) / 100
     return p >= 0.01 ? p : null
 }
+
+/**
+ * Read a package size like "5GB", "1.5 GB", "500MB" or "1TB" as gigabytes. Returns null for anything
+ * else (for example "Unlimited"), so those packages are skipped instead of guessed. 1GB = 1000MB.
+ */
+export function parseSizeGb(size: string | null | undefined): number | null {
+    const m = /^\s*(\d+(?:\.\d+)?)\s*(tb|gb|g|mb|m)?\s*$/i.exec(size ?? '')
+    if (!m) return null
+    const n = Number(m[1])
+    const unit = (m[2] ?? 'gb').toLowerCase()
+    const gb = unit === 'tb' ? n * 1000 : unit === 'mb' || unit === 'm' ? n / 1000 : n
+    return gb > 0 ? gb : null
+}
+
+/** Price for a package of `gb` gigabytes at `ratePerGb`, rounded to the nearest `step` (default 1 pesewa). */
+export function priceFromRate(gb: number, ratePerGb: number, step = 0.01): number | null {
+    if (!(gb > 0) || !(ratePerGb > 0) || !(step > 0)) return null
+    const price = Math.round((gb * ratePerGb) / step) * step
+    const rounded = Math.round(price * 100) / 100
+    return rounded >= 0.01 && rounded <= MAX_PRICE ? rounded : null
+}
+
+export interface RateRow {
+    id: string
+    network: string
+    size: string
+    /** What is in the box now: a number, a typed string, or empty. */
+    current: string | number | null | undefined
+}
+
+export interface RateOptions {
+    ratePerGb: number
+    step: number
+    /** A network name, or 'all'. */
+    network: string
+    /** false = only fill packages with no price yet; true = replace prices that are already set. */
+    overwrite: boolean
+}
+
+export interface RatePlan {
+    /** packageId -> new price */
+    updates: Record<string, number>
+    /** Sizes that could not be read (for example "Unlimited"). */
+    skippedUnreadable: string[]
+    /** Already had a price and overwrite was off. */
+    keptExisting: number
+}
+
+const isEmpty = (v: RateRow['current']) => v === null || v === undefined || String(v).trim() === ''
+
+/** Pure: the prices a per-GB rate would set. Nothing is written; the caller shows it for review first. */
+export function planRatePrices(rows: RateRow[], o: RateOptions): RatePlan {
+    const plan: RatePlan = { updates: {}, skippedUnreadable: [], keptExisting: 0 }
+    for (const r of rows) {
+        if (o.network !== 'all' && r.network !== o.network) continue
+        if (!o.overwrite && !isEmpty(r.current)) { plan.keptExisting++; continue }
+        const gb = parseSizeGb(r.size)
+        const price = gb === null ? null : priceFromRate(gb, o.ratePerGb, o.step)
+        if (price === null) { plan.skippedUnreadable.push(`${r.network} ${r.size}`); continue }
+        plan.updates[r.id] = price
+    }
+    return plan
+}

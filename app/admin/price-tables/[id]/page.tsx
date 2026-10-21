@@ -13,6 +13,7 @@ import { ArrowLeft, Loader2, AlertTriangle, Percent } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import { parsePrice, belowCost, discountedPrice } from '@/lib/price-tables'
+import { RateTool } from '@/components/admin/rate-tool'
 
 interface Row { id: string; network: string; size: string; is_available: boolean; base: number; cost: number; price: number | null }
 interface Detail { table: { id: string; name: string; description: string | null }; roles: { slug: string; label: string }[]; packages: Row[] }
@@ -122,6 +123,13 @@ export default function PriceTableEditorPage() {
                     Leave a price empty and that package costs the base price.
                 </p>
             </div>
+
+            <Card><CardContent className="p-4">
+                <RateTool
+                    rows={data.packages.map(r => ({ id: r.id, network: r.network, size: r.size, current: valueOf(r) }))}
+                    onApply={(plan) => setEdits(e => ({ ...e, ...Object.fromEntries(Object.entries(plan.updates).map(([pid, p]) => [pid, String(p)])) }))}
+                />
+            </CardContent></Card>
 
             <Card><CardContent className="flex flex-wrap items-end gap-3 p-4">
                 <div className="space-y-1.5">

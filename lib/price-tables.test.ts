@@ -65,3 +65,69 @@ describe('discountedPrice', () => {
         expect(discountedPrice(6, -5)).toBeNull()
     })
 })
+
+import { parseSizeGb, priceFromRate } from './price-tables'
+
+describe('parseSizeGb', () => {
+    it('reads common size formats as gigabytes', () => {
+        expect(parseSizeGb('5GB')).toBe(5)
+        expect(parseSizeGb('1.5 gb')).toBe(1.5)
+        expect(parseSizeGb('10')).toBe(10)
+        expect(parseSizeGb('500MB')).toBe(0.5)
+        expect(parseSizeGb('1TB')).toBe(1000)
+    })
+    it('returns null for sizes it cannot read', () => {
+        for (const s of ['Unlimited', '', '5 GB + 2 GB night', 'GB', '0GB', null, undefined]) expect(parseSizeGb(s as any)).toBeNull()
+    })
+})
+
+describe('priceFromRate', () => {
+    it('multiplies size by the rate and rounds to pesewas', () => {
+        expect(priceFromRate(5, 3.9)).toBe(19.5)
+        expect(priceFromRate(1.5, 3.9)).toBe(5.85)
+        expect(priceFromRate(0.5, 3.9)).toBe(1.95)
+        expect(priceFromRate(3, 3.33)).toBe(9.99)
+    })
+    it('rounds to the chosen step', () => {
+        expect(priceFromRate(5, 3.93, 0.1)).toBe(19.7)
+        expect(priceFromRate(5, 3.93, 0.5)).toBe(19.5)
+        expect(priceFromRate(7, 3.9, 0.5)).toBe(27.5)
+    })
+    it('rejects nonsense', () => {
+        expect(priceFromRate(0, 3.9)).toBeNull()
+        expect(priceFromRate(5, 0)).toBeNull()
+        expect(priceFromRate(5, 3.9, 0)).toBeNull()
+        expect(priceFromRate(0.001, 1)).toBeNull()
+    })
+})
+
+import { planRatePrices } from './price-tables'
+
+describe('planRatePrices', () => {
+    const rows = [
+        { id: 'a', network: 'MTN', size: '1GB', current: '' },
+        { id: 'b', network: 'MTN', size: '5GB', current: 20 },
+        { id: 'c', network: 'MTN', size: 'Unlimited', current: null },
+        { id: 'd', network: 'Telecel', size: '2GB', current: undefined },
+    ]
+    const base = { ratePerGb: 3.9, step: 0.01, network: 'all', overwrite: false }
+
+    it('fills only empty prices by default and counts what it kept', () => {
+        const p = planRatePrices(rows, base)
+        expect(p.updates).toEqual({ a: 3.9, d: 7.8 })
+        expect(p.keptExisting).toBe(1)
+        expect(p.skippedUnreadable).toEqual(['MTN Unlimited'])
+    })
+    it('replaces existing prices when overwrite is on', () => {
+        expect(planRatePrices(rows, { ...base, overwrite: true }).updates).toEqual({ a: 3.9, b: 19.5, d: 7.8 })
+    })
+    it('limits to one network', () => {
+        expect(planRatePrices(rows, { ...base, network: 'Telecel', overwrite: true }).updates).toEqual({ d: 7.8 })
+    })
+    it('applies the rounding step', () => {
+        expect(planRatePrices(rows, { ...base, ratePerGb: 3.93, step: 0.5, overwrite: true }).updates).toEqual({ a: 4, b: 19.5, d: 8 })
+    })
+    it('changes nothing for an invalid rate', () => {
+        expect(planRatePrices(rows, { ...base, ratePerGb: 0 }).updates).toEqual({})
+    })
+})
