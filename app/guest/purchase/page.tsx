@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
     Loader2,
     ArrowLeft,
@@ -224,9 +225,8 @@ function GuestPurchaseContent() {
                     </div>
 
                     <TabsContent value="purchase" className="mt-0">
-                        <div className="grid lg:grid-cols-3 gap-8">
-                            {/* Left Side: Package Selection */}
-                            <div className="lg:col-span-2 space-y-6">
+                        <div className="space-y-6">
+                            <div className="space-y-6">
                                 <div className="flex flex-col space-y-2">
                                     <h1 className="text-3xl font-bold text-slate-900 text-center lg:text-left">Choose Data Package</h1>
                                     <p className="text-slate-500 text-center lg:text-left">Select your network and the bundle you want to purchase.</p>
@@ -256,13 +256,13 @@ function GuestPurchaseContent() {
 
                                 {/* Packages Grid */}
                                 {isLoading ? (
-                                    <div className="grid sm:grid-cols-2 gap-4">
+                                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {[1, 2, 3, 4].map(i => (
                                             <div key={i} className="h-32 bg-slate-200 animate-pulse rounded-2xl" />
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="grid sm:grid-cols-2 gap-4">
+                                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {filteredPackages.map((pkg) => (
                                             <button
                                                 key={pkg.id}
@@ -299,18 +299,27 @@ function GuestPurchaseContent() {
                                 )}
                             </div>
 
-                            {/* Right Side: Checkout Form */}
-                            <div className="lg:col-span-1">
-                                <Card className="sticky top-24 shadow-2xl border-slate-200 overflow-hidden">
-                                    <div className="h-2 bg-gradient-to-r from-[#0056B3] to-[#00B4D8}" />
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center space-x-2 text-xl">
+                            {/* Checkout: one modal on phone, tablet and laptop */}
+                            <Dialog
+                                open={!!selectedPackage}
+                                onOpenChange={(open) => {
+                                    if (!open && !isProcessing) {
+                                        setSelectedPackage(null)
+                                        setPhoneError('')
+                                    }
+                                }}
+                            >
+                                <DialogContent className="w-[calc(100%-1.5rem)] max-w-md max-h-[92vh] overflow-y-auto rounded-[1.75rem] border-t-4 border-t-primary p-5 sm:p-6">
+                                    <DialogHeader className="space-y-1.5 text-left">
+                                        <DialogTitle className="flex items-center gap-2 text-xl !text-left">
                                             <ShoppingCart className="w-5 h-5 text-primary" />
-                                            <span>Quick Checkout</span>
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-6">
-                                        {selectedPackage ? (
+                                            Quick checkout
+                                        </DialogTitle>
+                                        <DialogDescription className="text-left">Enter the recipient's number and your email to pay.</DialogDescription>
+                                    </DialogHeader>
+
+                                    {selectedPackage && (
+                                        <div className="space-y-5">
                                             <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 space-y-2">
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-slate-500">Package:</span>
@@ -325,67 +334,69 @@ function GuestPurchaseContent() {
                                                     <span className="text-xl font-black text-primary">{formatCurrency(selectedPackage.price)}</span>
                                                 </div>
                                             </div>
-                                        ) : (
-                                            <div className="p-8 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-2">
-                                                <Zap className="w-8 h-8 text-slate-300 mx-auto" />
-                                                <p className="text-sm text-slate-500">Select a data package to continue</p>
-                                            </div>
-                                        )}
 
-                                        <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="phone">Recipient Phone Number</Label>
-                                                <Input
-                                                    id="phone"
-                                                    placeholder="e.g. 0241234567"
-                                                    value={phoneNumber}
-                                                    onChange={(e) => {
-                                                        setPhoneNumber(e.target.value)
-                                                        setPhoneError('')
-                                                    }}
-                                                    className={cn(phoneError && "border-red-500 focus-visible:ring-red-500")}
-                                                />
-                                                {phoneError && <p className="text-xs text-red-500 font-medium">{phoneError}</p>}
-                                            </div>
+                                            <form
+                                                className="space-y-4"
+                                                onSubmit={(e) => { e.preventDefault(); handleInitializePurchase() }}
+                                            >
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="phone">Recipient phone number</Label>
+                                                    <Input
+                                                        id="phone"
+                                                        type="tel"
+                                                        inputMode="tel"
+                                                        autoComplete="tel"
+                                                        autoFocus
+                                                        placeholder="e.g. 0241234567"
+                                                        value={phoneNumber}
+                                                        onChange={(e) => {
+                                                            setPhoneNumber(e.target.value)
+                                                            setPhoneError('')
+                                                        }}
+                                                        className={cn(phoneError && "border-red-500 focus-visible:ring-red-500")}
+                                                    />
+                                                    {phoneError && <p className="text-xs text-red-500 font-medium">{phoneError}</p>}
+                                                </div>
 
-                                            <div className="space-y-2">
-                                                <Label htmlFor="email">Your Email Address</Label>
-                                                <Input
-                                                    id="email"
-                                                    type="email"
-                                                    placeholder="for order tracking & receipt"
-                                                    value={email}
-                                                    onChange={(e) => setEmail(e.target.value)}
-                                                />
-                                                <p className="text-[10px] text-slate-400">We will send your order tracking link here.</p>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="email">Your email address</Label>
+                                                    <Input
+                                                        id="email"
+                                                        type="email"
+                                                        inputMode="email"
+                                                        autoComplete="email"
+                                                        placeholder="for order tracking & receipt"
+                                                        value={email}
+                                                        onChange={(e) => setEmail(e.target.value)}
+                                                    />
+                                                    <p className="text-[10px] text-slate-400">We will send your order tracking link here.</p>
+                                                </div>
+
+                                                <Button
+                                                    type="submit"
+                                                    className="w-full h-14 bg-[#0056B3] hover:bg-[#004494] text-white font-bold text-lg rounded-xl shadow-lg shadow-blue-500/20 disabled:opacity-50"
+                                                    disabled={isProcessing}
+                                                >
+                                                    {isProcessing ? (
+                                                        <>
+                                                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                                            Processing...
+                                                        </>
+                                                    ) : (
+                                                        <>Pay {formatCurrency(selectedPackage.price)} now</>
+                                                    )}
+                                                </Button>
+                                            </form>
+
+                                            <div className="flex items-center justify-center space-x-4 opacity-50 grayscale">
+                                                <Zap className="w-5 h-5" />
+                                                <Shield className="w-5 h-5" />
+                                                <CheckCircle2 className="w-5 h-5" />
                                             </div>
                                         </div>
-
-                                        <Button
-                                            className="w-full h-14 bg-[#0056B3] hover:bg-[#004494] text-white font-bold text-lg rounded-xl shadow-lg shadow-blue-500/20 disabled:opacity-50"
-                                            onClick={handleInitializePurchase}
-                                            disabled={!selectedPackage || isProcessing}
-                                        >
-                                            {isProcessing ? (
-                                                <>
-                                                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                                                    Processing...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    Pay {selectedPackage ? formatCurrency(selectedPackage.price) : ''} Now
-                                                </>
-                                            )}
-                                        </Button>
-
-                                        <div className="flex items-center justify-center space-x-4 opacity-50 grayscale hover:grayscale-0 transition-all">
-                                            <Zap className="w-5 h-5" />
-                                            <Shield className="w-5 h-5" />
-                                            <CheckCircle2 className="w-5 h-5" />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
+                                    )}
+                                </DialogContent>
+                            </Dialog>
                         </div>
                     </TabsContent>
 
