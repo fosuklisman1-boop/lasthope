@@ -78,14 +78,22 @@ export interface ShopConfig {
 
 /**
  * What a shop customer pays for a package: the shop's own price if it set one, otherwise the
- * owner's cost plus the shop's margin, otherwise the owner's cost.
+ * owner's cost plus the shop's margin, otherwise the owner's cost, held to the margin cap if there is one.
  */
-export function shopPrice(ownerCost: number, config: ShopConfig | null | undefined): number {
+export function shopPrice(ownerCost: number, config: ShopConfig | null | undefined, maxMarginPercent?: number | null): number {
+  let price = ownerCost
   if (config) {
     const custom = Number(config.custom_price)
-    if (custom > 0) return custom
-    const margin = Number(config.profit_margin)
-    if (margin) return ownerCost + margin
+    if (custom > 0) price = custom
+    else {
+      const margin = Number(config.profit_margin)
+      if (margin) price = ownerCost + margin
+    }
   }
-  return ownerCost
+  // The platform (or this shop's own) cap on how far above the owner's cost a shop may charge.
+  if (maxMarginPercent !== null && maxMarginPercent !== undefined && Number.isFinite(maxMarginPercent)) {
+    const max = Math.round(ownerCost * (1 + maxMarginPercent / 100) * 100) / 100
+    if (price > max) price = max
+  }
+  return price
 }

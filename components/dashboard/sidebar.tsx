@@ -66,6 +66,7 @@ const adminNavItems = [
     { href: '/admin/memberships', label: 'Agent Members', icon: Crown },
     { href: '/admin/users', label: 'Users', icon: Users },
     { href: '/admin/packages', label: 'Packages', icon: Package },
+    { href: '/admin/shops', label: 'Shops', icon: Store },
     { href: '/admin/price-tables', label: 'Price Tables', icon: Table2 },
     { href: '/admin/roles', label: 'Roles', icon: Tags },
     { href: '/admin/api-keys', label: 'API Keys', icon: KeyRound },

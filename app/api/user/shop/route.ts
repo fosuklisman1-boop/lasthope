@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@/lib/supabase'
+import { loadShopControls, loadShopLimits, limitsFor } from '@/lib/shop-data'
 
 // Slug generation utility
 const generateSlug = (name: string): string => {
@@ -38,7 +39,23 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
 
-        return NextResponse.json({ shop })
+        // What the admin has restricted on this shop, so the dashboard can explain it
+        let controls = null
+        if (shop) {
+            try {
+                const svc = createServerClient() as any
+                const [c, l] = await Promise.all([loadShopControls(svc, shop.id), loadShopLimits(svc)])
+                const eff = limitsFor(c, l)
+                controls = {
+                    suspended: c.suspended, message: c.suspended_message, withdrawals_held: c.withdrawals_held, hold_reason: c.hold_reason,
+                    profile_locked: c.profile_locked, max_margin_percent: eff.maxMarginPercent, min_withdrawal: eff.minWithdrawal,
+                }
+            } catch (e: any) {
+                console.error('[user/shop] controls failed:', e?.message)
+            }
+        }
+
+        return NextResponse.json({ shop, controls })
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
@@ -77,7 +94,7 @@ export async function POST(request: NextRequest) {
 
         const slug = generateSlug(name)
 
-        const { data: shop, error } = await supabase
+        const { data: shop, error } = await (createServerClient() as any)
             .from('shops')
             .insert({
                 user_id: user.id,
@@ -120,7 +137,25 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: 'Shop ID is required' }, { status: 400 })
         }
 
-        const { data: shop, error } = await supabase
+        const svc = createServerClient() as any
+        const { data: current } = await svc.from('shops').select('id, name, description, logo_url').eq('id', id).eq('user_id', user.id).maybeSingle()
+        if (!current) return NextResponse.json({ error: 'Shop not found' }, { status: 404 })
+
+        // An admin can lock the public profile (for example after a complaint).
+        try {
+            const controls = await loadShopControls(svc, id)
+            if (controls.profile_locked) {
+                const changed =
+                    (name !== undefined && name !== current.name) ||
+                    (description !== undefined && (description || null) !== (current.description || null)) ||
+                    (logoUrl !== undefined && (logoUrl || null) !== (current.logo_url || null))
+                if (changed) return NextResponse.json({ error: 'An admin has locked your shop profile. Contact support to change it.' }, { status: 403 })
+            }
+        } catch (e: any) {
+            return NextResponse.json({ error: 'Could not check your shop settings. Please try again.' }, { status: 503 })
+        }
+
+        const { data: shop, error } = await svc
             .from('shops')
             .update({
                 name,

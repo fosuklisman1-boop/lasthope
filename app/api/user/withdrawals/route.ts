@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { formatCurrency } from '@/lib/utils'
+import { createServerClient } from '@/lib/supabase'
+import { loadShopBalance, loadShopControls, loadShopLimits, limitsFor } from '@/lib/shop-data'
 
 export async function GET(request: NextRequest) {
     try {
@@ -25,25 +27,12 @@ export async function GET(request: NextRequest) {
 
         if (wError) throw wError
 
-        // 2. Calculate total earnings (sum of profit_amount from completed orders via user's shop)
-        // First get shop(s) for the user
-        const { data: shops } = await supabase
-            .from('shops')
-            .select('id')
-            .eq('user_id', user.id)
-
-        const shopIds = shops?.map(s => s.id) || []
-
-        let totalEarnings = 0
-        if (shopIds.length > 0) {
-            const { data: orders } = await supabase
-                .from('orders')
-                .select('profit_amount')
-                .in('shop_id', shopIds)
-                .eq('payment_status', 'paid')
-            
-            totalEarnings = orders?.reduce((acc, curr) => acc + (Number(curr.profit_amount) || 0), 0) || 0
-        }
+        // 2. Earnings: live paid-order profit plus the profit ledger (adjustments, reversals, archived profit)
+        const svc = createServerClient() as any
+        const { data: shops } = await supabase.from('shops').select('id').eq('user_id', user.id)
+        const shopId = shops?.[0]?.id as string | undefined
+        const balance = shopId ? await loadShopBalance(svc, shopId, user.id) : null
+        const totalEarnings = balance?.totalEarnings ?? 0
 
         // 3. Calculate already withdrawn (approved)
         const totalWithdrawn = withdrawals
@@ -61,7 +50,8 @@ export async function GET(request: NextRequest) {
                 totalEarnings,
                 totalWithdrawn,
                 pendingAmount,
-                availableBalance: totalEarnings - totalWithdrawn
+                availableBalance: totalEarnings - totalWithdrawn,
+                withdrawableBalance: balance ? balance.available : 0
             }
         })
     } catch (error: any) {
@@ -89,19 +79,29 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
         }
 
-        // 1. Double check available balance server-side
+        // 1. Admin controls and the balance, server-side
+        const svc = createServerClient() as any
         const { data: shops } = await supabase.from('shops').select('id').eq('user_id', user.id)
-        const shopIds = shops?.map(s => s.id) || []
-        
-        let totalEarnings = 0
-        if (shopIds.length > 0) {
-            const { data: orders } = await supabase
-                .from('orders')
-                .select('profit_amount')
-                .in('shop_id', shopIds)
-                .eq('payment_status', 'paid')
-            totalEarnings = orders?.reduce((acc, curr) => acc + (Number(curr.profit_amount) || 0), 0) || 0
+        const shopId = shops?.[0]?.id as string | undefined
+        if (!shopId) return NextResponse.json({ error: 'You do not have a shop' }, { status: 400 })
+
+        let controls, limits, balance
+        try {
+            ;[controls, limits, balance] = await Promise.all([
+                loadShopControls(svc, shopId), loadShopLimits(svc), loadShopBalance(svc, shopId, user.id),
+            ])
+        } catch (e: any) {
+            console.error('[withdrawals] controls failed:', e?.message)
+            return NextResponse.json({ error: 'Withdrawals are temporarily unavailable. Please try again shortly.' }, { status: 503 })
         }
+        if (controls.withdrawals_held) {
+            return NextResponse.json({ error: 'Withdrawals on your shop are on hold. Please contact support.' }, { status: 403 })
+        }
+        const minWithdrawal = limitsFor(controls, limits).minWithdrawal
+        if (minWithdrawal !== null && amount < minWithdrawal) {
+            return NextResponse.json({ error: `The minimum withdrawal is ${formatCurrency(minWithdrawal)}.` }, { status: 400 })
+        }
+        const totalEarnings = balance.totalEarnings
 
         const { data: withdrawals } = await supabase
             .from('withdrawals')

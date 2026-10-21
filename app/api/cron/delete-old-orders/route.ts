@@ -16,20 +16,17 @@ async function handleGET(request: NextRequest) {
         const fourteenDaysAgo = new Date()
         fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
 
-        // Delete orders older than 14 days
-        const { data, error, count } = await (supabase
-            .from('orders') as any)
-            .delete()
-            .lt('created_at', fourteenDaysAgo.toISOString())
-            .select('id', { count: 'exact' })
+        // Delete orders older than 14 days. The database function moves each shop's paid profit into
+        // the profit ledger in the same statement, so cleaning up history never lowers a shop's balance.
+        const { data: count, error } = await (supabase as any).rpc('archive_old_orders', { p_cutoff: fourteenDaysAgo.toISOString() })
 
         if (error) throw error
 
-        console.log(`Deleted ${count || 0} orders older than 14 days`)
+        console.log(`Deleted ${Number(count) || 0} orders older than 14 days`)
 
         return NextResponse.json({
             success: true,
-            deleted: count || 0,
+            deleted: Number(count) || 0,
             cutoffDate: fourteenDaysAgo.toISOString()
         })
     } catch (error) {

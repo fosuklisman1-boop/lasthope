@@ -78,11 +78,23 @@ interface PackageConfig {
     size: string
     price: number
     agent_price: number
+    blocked?: boolean
+    max_price?: number | null
     shop_config: {
         is_enabled: boolean
         custom_price: number | null
         profit_margin: number
     }
+}
+
+interface ShopControlsView {
+    suspended: boolean
+    message: string | null
+    withdrawals_held: boolean
+    hold_reason: string | null
+    profile_locked: boolean
+    max_margin_percent: number | null
+    min_withdrawal: number | null
 }
 
 interface Order {
@@ -98,6 +110,7 @@ interface Order {
 }
 
 function PriceInput({ pkg, cost, onUpdate }: { pkg: PackageConfig, cost: number, onUpdate: (value: number) => void }) {
+    const maxPrice = pkg.max_price ?? null
     const [localValue, setLocalValue] = useState<string>((pkg.shop_config.custom_price || cost).toString())
 
     useEffect(() => {
@@ -105,10 +118,12 @@ function PriceInput({ pkg, cost, onUpdate }: { pkg: PackageConfig, cost: number,
     }, [pkg.shop_config.custom_price, cost])
 
     return (
+        <div>
         <Input 
             className="h-7 text-xs font-bold" 
             type="number" 
             step="0.01"
+            max={maxPrice ?? undefined}
             value={localValue}
             onChange={(e) => setLocalValue(e.target.value)}
             onBlur={() => {
@@ -126,6 +141,8 @@ function PriceInput({ pkg, cost, onUpdate }: { pkg: PackageConfig, cost: number,
                 }
             }}
         />
+        {maxPrice !== null && <p className="mt-1 text-[10px] text-muted-foreground">Highest allowed: {formatCurrency(maxPrice)}</p>}
+        </div>
     )
 }
 
@@ -144,6 +161,7 @@ export default function MyShopPage() {
     const [shopName, setShopName] = useState('')
     const [description, setDescription] = useState('')
     const [withdrawalAmount, setWithdrawalAmount] = useState('')
+    const [controls, setControls] = useState<ShopControlsView | null>(null)
     const [paymentMethod, setPaymentMethod] = useState<'MTN' | 'TELECEL' | 'AT'>('MTN')
     const [momoNumber, setMomoNumber] = useState('')
     const [momoName, setMomoName] = useState('')
@@ -171,6 +189,7 @@ export default function MyShopPage() {
     const fetchShop = async () => {
         const res = await fetch('/api/user/shop')
         const data = await res.json()
+        setControls(data.controls ?? null)
         if (data.shop) {
             setShop(data.shop)
             setShopName(data.shop.name)
@@ -258,12 +277,16 @@ export default function MyShopPage() {
             const data = await res.json()
             if (data.error) throw new Error(data.error)
             
-            // Optimistic update
-            setPackages(packages.map(p => p.id === pkgId ? {
+            // Use what the server saved: it may have lowered the price to the highest allowed
+            setPackages(prev => prev.map(p => p.id === pkgId ? {
                 ...p,
-                shop_config: { ...p.shop_config, ...updates }
+                shop_config: {
+                    ...p.shop_config, ...updates,
+                    ...(data.config ? { custom_price: data.config.custom_price, profit_margin: data.config.profit_margin, is_enabled: data.config.is_enabled } : {}),
+                }
             } : p))
-            toast.success('Package updated')
+            if (data.capped) toast.warning('That price is above the highest your shop may charge, so it was lowered.')
+            else toast.success('Package updated')
         } catch (error: any) {
             toast.error(error.message)
         }
@@ -415,6 +438,20 @@ export default function MyShopPage() {
                 </Card>
             </div>
 
+            {controls && (controls.suspended || controls.withdrawals_held || controls.profile_locked || controls.max_margin_percent !== null || controls.min_withdrawal !== null) && (
+                <Card className={controls.suspended ? 'neon-edge-amber' : ''}>
+                    <CardContent className="space-y-1.5 p-5 text-sm">
+                        {controls.suspended && (
+                            <p className="font-semibold text-[hsl(var(--neon-amber))]">Your shop is suspended. Customers cannot buy from it right now.{controls.message ? ` ${controls.message}` : ' Contact support for details.'}</p>
+                        )}
+                        {controls.withdrawals_held && <p>Your withdrawals are on hold. Contact support for details.</p>}
+                        {controls.profile_locked && <p className="text-muted-foreground">Your shop name, description and logo are locked by an admin.</p>}
+                        {controls.max_margin_percent !== null && <p className="text-muted-foreground">Your prices can be at most {controls.max_margin_percent}% above your cost. Anything higher is lowered automatically.</p>}
+                        {controls.min_withdrawal !== null && <p className="text-muted-foreground">The smallest withdrawal you can request is {formatCurrency(controls.min_withdrawal)}.</p>}
+                    </CardContent>
+                </Card>
+            )}
+
             <Tabs defaultValue="packages" className="w-full">
                 <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
                     <TabsTrigger value="packages">Packages</TabsTrigger>
@@ -505,9 +542,10 @@ export default function MyShopPage() {
                                                 <Card key={pkg.id} className={!pkg.shop_config.is_enabled ? 'opacity-60 bg-muted/30' : ''}>
                                                     <CardContent className="p-4 space-y-4">
                                                         <div className="flex items-center justify-between">
-                                                            <span className="font-bold">{pkg.size}</span>
+                                                            <span className="font-bold">{pkg.size}{pkg.blocked && <span className="ml-2 text-[10px] font-semibold uppercase text-[hsl(var(--neon-coral))]">Switched off by admin</span>}</span>
                                                             <Switch 
-                                                                checked={pkg.shop_config.is_enabled} 
+                                                                checked={pkg.shop_config.is_enabled && !pkg.blocked} 
+                                                                disabled={pkg.blocked}
                                                                 onCheckedChange={(checked) => handleUpdatePackage(pkg.id, { isEnabled: checked })}
                                                             />
                                                         </div>

@@ -3,6 +3,8 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@/lib/supabase'
 import { resolvePrice } from '@/lib/pricing'
+import { loadShopControls, loadShopLimits, loadBlockedPackageIds, limitsFor } from '@/lib/shop-data'
+import { clampShopPrice, maxShopPrice } from '@/lib/shop-rules'
 import { loadPricingContext } from '@/lib/pricing-context'
 import { parsePrice, MAX_ITEMS_PER_UPDATE } from '@/lib/price-tables'
 
@@ -48,20 +50,33 @@ export async function GET(request: NextRequest) {
 
         if (overrideError) throw overrideError
 
+        // Admin limits: blocked bundles and the highest price this shop may charge
+        const svc = createServerClient() as any
+        let controls, limits, blocked, ctx
+        try {
+            ;[controls, limits, blocked, ctx] = await Promise.all([
+                loadShopControls(svc, shop.id), loadShopLimits(svc), loadBlockedPackageIds(svc, shop.id), loadPricingContext(svc, user.id),
+            ])
+        } catch (e: any) {
+            console.error('[shop packages] controls failed:', e?.message)
+            return NextResponse.json({ error: 'Prices are temporarily unavailable' }, { status: 503 })
+        }
+        const maxMargin = limitsFor(controls, limits).maxMarginPercent
+
         // 4. Merge results
         const mergedPackages = allPackages.map(pkg => {
             const override = shopOverrides.find(o => o.package_id === pkg.id)
+            const isBlocked = blocked.has(pkg.id)
+            const cap = maxShopPrice(resolvePrice(pkg as any, ctx), maxMargin)
             return {
                 ...pkg,
-                shop_config: override || {
-                    is_enabled: true,
-                    custom_price: null,
-                    profit_margin: 0
-                }
+                blocked: isBlocked,
+                max_price: Number.isFinite(cap) ? cap : null,
+                shop_config: { ...(override || { is_enabled: true, custom_price: null, profit_margin: 0 }), ...(isBlocked ? { is_enabled: false } : {}) }
             }
         })
 
-        return NextResponse.json({ packages: mergedPackages, shopId: shop.id })
+        return NextResponse.json({ packages: mergedPackages, shopId: shop.id, maxMarginPercent: maxMargin })
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
@@ -99,15 +114,48 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized shop access' }, { status: 403 })
         }
 
-        // Upsert override
-        const { data, error } = await supabase
+        const svc = createServerClient() as any
+        let controls, limits, blocked, ctx
+        try {
+            ;[controls, limits, blocked, ctx] = await Promise.all([
+                loadShopControls(svc, shopId), loadShopLimits(svc), loadBlockedPackageIds(svc, shopId), loadPricingContext(svc, user.id),
+            ])
+        } catch (e: any) {
+            console.error('[shop packages] controls failed:', e?.message)
+            return NextResponse.json({ error: 'Prices are temporarily unavailable' }, { status: 503 })
+        }
+        if (blocked.has(packageId) && isEnabled) {
+            return NextResponse.json({ error: 'An admin has switched this bundle off for your shop.' }, { status: 403 })
+        }
+
+        const { data: pkg } = await svc.from('data_packages').select('*').eq('id', packageId).maybeSingle()
+        if (!pkg) return NextResponse.json({ error: 'Package not found' }, { status: 404 })
+        const cost = resolvePrice(pkg, ctx)
+        const maxMargin = limitsFor(controls, limits).maxMarginPercent
+
+        // Price and margin are worked out here, from the owner's real cost, and held to the cap.
+        let price: number | null = Number(customPrice) > 0 ? Number(customPrice) : null
+        let margin = Number(profitMargin) || 0
+        let capped = false
+        if (price !== null) {
+            const c = clampShopPrice(price, cost, maxMargin)
+            price = c.price
+            capped = c.capped
+            margin = Math.round((price - cost) * 100) / 100
+        } else {
+            const c = clampShopPrice(cost + margin, cost, maxMargin)
+            capped = c.capped
+            margin = Math.round((c.price - cost) * 100) / 100
+        }
+
+        const { data, error } = await svc
             .from('shop_packages')
             .upsert({
                 shop_id: shopId,
                 package_id: packageId,
-                is_enabled: isEnabled,
-                custom_price: customPrice,
-                profit_margin: profitMargin,
+                is_enabled: blocked.has(packageId) ? false : isEnabled,
+                custom_price: price,
+                profit_margin: margin,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'shop_id,package_id' })
             .select()
@@ -115,7 +163,7 @@ export async function POST(request: NextRequest) {
 
         if (error) throw error
 
-        return NextResponse.json({ success: true, config: data })
+        return NextResponse.json({ success: true, config: data, capped })
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
@@ -174,21 +222,36 @@ export async function PUT(request: NextRequest) {
         if (items.some(i => !byId.has(i.packageId))) return NextResponse.json({ error: 'Some packages are no longer available. Reload the page.' }, { status: 400 })
         const enabled = new Map<string, boolean>((existing ?? []).map((r: any) => [r.package_id, r.is_enabled]))
 
+        let controls, limits, blocked
+        try {
+            ;[controls, limits, blocked] = await Promise.all([loadShopControls(svc, shopId), loadShopLimits(svc), loadBlockedPackageIds(svc, shopId)])
+        } catch (e: any) {
+            console.error('[shop bulk prices] controls failed:', e?.message)
+            return NextResponse.json({ error: 'Prices are temporarily unavailable' }, { status: 503 })
+        }
+        if (items.some(i => blocked.has(i.packageId))) {
+            return NextResponse.json({ error: 'Some of these bundles are switched off for your shop by an admin. Remove them and try again.' }, { status: 403 })
+        }
+        const maxMargin = limitsFor(controls, limits).maxMarginPercent
+        let cappedCount = 0
+
         const now = new Date().toISOString()
         const rows = items.map(i => {
             const cost = resolvePrice(byId.get(i.packageId), ctx)
+            const c = clampShopPrice(i.price, cost, maxMargin)
+            if (c.capped) cappedCount++
             return {
                 shop_id: shopId, package_id: i.packageId,
                 is_enabled: enabled.has(i.packageId) ? enabled.get(i.packageId) : true,
-                custom_price: i.price, profit_margin: Math.round((i.price - cost) * 100) / 100, updated_at: now,
+                custom_price: c.price, profit_margin: Math.round((c.price - cost) * 100) / 100, updated_at: now,
             }
         })
 
-        const { error } = await supabase.from('shop_packages').upsert(rows, { onConflict: 'shop_id,package_id' })
+        const { error } = await svc.from('shop_packages').upsert(rows, { onConflict: 'shop_id,package_id' })
         if (error) throw error
 
         const belowCost = rows.filter(r => r.profit_margin < 0).length
-        return NextResponse.json({ success: true, changed: rows.length, belowCost, rows: rows.map(r => ({ package_id: r.package_id, custom_price: r.custom_price, profit_margin: r.profit_margin })) })
+        return NextResponse.json({ success: true, changed: rows.length, belowCost, capped: cappedCount, rows: rows.map(r => ({ package_id: r.package_id, custom_price: r.custom_price, profit_margin: r.profit_margin })) })
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 })
     }

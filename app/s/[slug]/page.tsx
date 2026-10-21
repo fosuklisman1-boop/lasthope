@@ -47,6 +47,7 @@ export default function StorefrontPage() {
     const [shop, setShop] = useState<Shop | null>(null)
     const [packages, setPackages] = useState<PackageConfig[]>([])
     const [isLoading, setIsLoading] = useState(true)
+    const [unavailable, setUnavailable] = useState<string | null>(null)
     const [selectedPkg, setSelectedPkg] = useState<PackageConfig | null>(null)
     
     // Purchase states
@@ -68,6 +69,10 @@ export default function StorefrontPage() {
             const res = await fetch(`/api/guest/shop?slug=${params.slug}`)
             const data = await res.json()
             
+            if (data.suspended) {
+                setUnavailable(data.error)
+                return
+            }
             if (data.error) throw new Error(data.error)
             
             setShop(data.shop)
@@ -119,6 +124,21 @@ export default function StorefrontPage() {
                     <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
                     <p className="text-muted-foreground animate-pulse">Loading storefront...</p>
                 </div>
+            </div>
+        )
+    }
+
+    if (unavailable) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background p-4">
+                <Card className="max-w-md w-full text-center p-8">
+                    <Store className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <CardTitle className="text-2xl mb-2">Shop unavailable</CardTitle>
+                    <p className="text-muted-foreground mb-6">{unavailable}</p>
+                    <Button onClick={() => router.push('/')} variant="outline" className="w-full">
+                        Back to home
+                    </Button>
+                </Card>
             </div>
         )
     }

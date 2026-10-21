@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { resolvePrice, shopPrice } from '@/lib/pricing'
 import { loadPricingContext } from '@/lib/pricing-context'
+import { loadShopControls, loadShopLimits, loadBlockedPackageIds, limitsFor, DEFAULT_SUSPENSION_MESSAGE } from '@/lib/shop-data'
 
 export async function GET(request: NextRequest) {
     try {
@@ -29,6 +30,21 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Shop is currently inactive' }, { status: 403 })
         }
 
+        // Admin controls: suspension, blocked packages and the margin cap
+        let controls, limits, blocked
+        try {
+            ;[controls, limits, blocked] = await Promise.all([
+                loadShopControls(supabase, shop.id), loadShopLimits(supabase), loadBlockedPackageIds(supabase, shop.id),
+            ])
+        } catch (e: any) {
+            console.error('[guest/shop] controls failed:', e?.message)
+            return NextResponse.json({ error: 'This shop is temporarily unavailable' }, { status: 503 })
+        }
+        if (controls.suspended) {
+            return NextResponse.json({ error: controls.suspended_message || DEFAULT_SUSPENSION_MESSAGE, suspended: true }, { status: 403 })
+        }
+        const maxMargin = limitsFor(controls, limits).maxMarginPercent
+
         // 2. Fetch packages and join with shop overrides
         const { data: allPackages, error: pkgError } = await supabase
             .from('data_packages')
@@ -51,11 +67,11 @@ export async function GET(request: NextRequest) {
             console.error('[guest/shop] owner pricing failed:', e?.message)
             return NextResponse.json({ error: 'Prices are temporarily unavailable' }, { status: 503 })
         }
-        const mergedPackages = allPackages.map(pkg => {
+        const mergedPackages = allPackages.filter(pkg => !blocked.has(pkg.id)).map(pkg => {
             const override = shopOverrides?.find(o => o.package_id === pkg.id)
             return {
                 ...pkg,
-                shop_price: shopPrice(resolvePrice(pkg as any, ownerCtx), override),
+                shop_price: shopPrice(resolvePrice(pkg as any, ownerCtx), override, maxMargin),
                 shop_config: override || {
                     is_enabled: true,
                     custom_price: null,

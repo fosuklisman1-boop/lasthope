@@ -31,6 +31,7 @@ export function ShopBulkPricing({ shopId, packages, onSaved }: { shopId: string;
             const json = await res.json().catch(() => ({}))
             if (!res.ok) throw new Error(json.error || 'Failed to save the prices')
             toast.success(`Updated ${json.changed} price${json.changed === 1 ? '' : 's'}`)
+            if (json.capped > 0) toast.warning(`${json.capped} price${json.capped === 1 ? ' was' : 's were'} above the highest your shop may charge, so ${json.capped === 1 ? 'it was' : 'they were'} lowered.`)
             onSaved(json.rows)
             setPlanned({})
         } catch (e: any) {

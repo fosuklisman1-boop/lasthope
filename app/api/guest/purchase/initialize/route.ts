@@ -4,6 +4,7 @@ import { calculatePaystackFee, generateReferenceCode } from '@/lib/utils'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { resolvePrice, shopPrice } from '@/lib/pricing'
 import { loadPricingContext } from '@/lib/pricing-context'
+import { loadShopControls, loadShopLimits, loadBlockedPackageIds, limitsFor, DEFAULT_SUSPENSION_MESSAGE } from '@/lib/shop-data'
 import { isPaymentMaintenance, MAINTENANCE_MESSAGE } from '@/lib/maintenance'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
@@ -62,6 +63,24 @@ export async function POST(request: NextRequest) {
 
                 if (shop) {
                     console.log('[GuestPurchase] Shop found:', shop.name, 'Owner:', shop.user_id)
+
+                    // Admin controls. These must not be swallowed by the pricing fallback below,
+                    // so a failure to read them refuses the sale instead of allowing it.
+                    let controls, limits, blocked
+                    try {
+                        ;[controls, limits, blocked] = await Promise.all([
+                            loadShopControls(supabase, shop.id), loadShopLimits(supabase), loadBlockedPackageIds(supabase, shop.id),
+                        ])
+                    } catch (e: any) {
+                        console.error('[GuestPurchase] shop controls failed:', e?.message)
+                        return NextResponse.json({ error: 'This shop is temporarily unavailable. Please try again shortly.' }, { status: 503 })
+                    }
+                    if (controls.suspended) {
+                        return NextResponse.json({ error: controls.suspended_message || DEFAULT_SUSPENSION_MESSAGE }, { status: 403 })
+                    }
+                    if (blocked.has(packageId)) {
+                        return NextResponse.json({ error: 'This bundle is not available from this shop.' }, { status: 400 })
+                    }
                     
                     // Fetch owner role separately to be safe
                     const { data: owner, error: ownerErr } = await supabase
@@ -93,7 +112,7 @@ export async function POST(request: NextRequest) {
                         console.error('[GuestPurchase] Config fetch error:', configErr.message)
                     }
 
-                    priceToCharge = shopPrice(costPrice, shopConfig)
+                    priceToCharge = shopPrice(costPrice, shopConfig, limitsFor(controls, limits).maxMarginPercent)
 
                     profitAmount = priceToCharge - costPrice
                     console.log('[GuestPurchase] Calculated priceToCharge:', priceToCharge, 'Profit:', profitAmount)

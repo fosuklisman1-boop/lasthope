@@ -35,6 +35,14 @@ export const AUDIT_ACTIONS = [
     'price_table.delete',
     'customer_price.set',
     'customer_price.clear',
+    'shop.suspend',
+    'shop.unsuspend',
+    'shop.hold',
+    'shop.limits',
+    'shop.moderate',
+    'shop.package_block',
+    'shop.adjust',
+    'shop.delete',
 ] as const
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]
