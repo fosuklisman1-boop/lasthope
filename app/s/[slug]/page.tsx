@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +13,6 @@ import {
     ShoppingCart, 
     Store, 
     ShieldCheck, 
-    Zap,
     AlertCircle,
     CheckCircle2
 } from 'lucide-react'
@@ -163,139 +163,127 @@ export default function StorefrontPage() {
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 -mt-8 relative z-20">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Package Listing */}
-                    <div className="lg:col-span-2 space-y-8">
-                        {networks.map(network => (
-                            <div key={network} className="space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-1 h-8 rounded-full ${getNetworkColor(network)}`} />
-                                    <h2 className="text-xl font-bold">{network} Bundles</h2>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    {packages.filter(p => p.network === network).map(pkg => {
-                                        const finalPrice = pkg.shop_price
-                                        const isSelected = selectedPkg?.id === pkg.id
-                                        
-                                        return (
-                                            <Card 
-                                                key={pkg.id} 
-                                                className={`cursor-pointer transition-all hover:scale-[1.02] active:scale-95 border-2 ${isSelected ? 'border-primary shadow-lg ring-1 ring-primary/20' : 'border-transparent'}`}
-                                                onClick={() => setSelectedPkg(pkg)}
-                                            >
-                                                <CardContent className="p-0 overflow-hidden">
-                                                    <div className={`h-2 bg-gradient-to-r ${getNetworkGradient(network)}`} />
-                                                    <div className="p-5 flex items-center justify-between">
-                                                        <div>
-                                                            <p className="text-sm font-medium text-muted-foreground uppercase">{network}</p>
-                                                            <h3 className="text-2xl font-black tracking-tight mt-1">{pkg.size}</h3>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p className="text-2xl font-black text-primary">{formatCurrency(finalPrice)}</p>
-                                                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Instant Delivery</p>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Checkout Sidebar */}
-                    <div className="lg:col-span-1">
-                        <Card className="sticky top-8 shadow-xl border-t-4 border-t-primary">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <ShoppingCart className="w-5 h-5 text-primary" />
-                                    Complete Order
-                                </CardTitle>
-                                <CardDescription>Enter your details to receive your bundle.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                {selectedPkg ? (
-                                    <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 space-y-1">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium opacity-70">Selected Package</span>
-                                            <span className="text-[10px] font-bold bg-primary text-white px-2 py-0.5 rounded-full uppercase">{selectedPkg.network}</span>
-                                        </div>
-                                        <p className="text-xl font-black">{selectedPkg.size}</p>
-                                        <div className="flex items-center justify-between pt-2 border-t mt-2">
-                                            <span className="text-sm">Total Amount</span>
-                                            <span className="text-xl font-black text-primary">
-                                                {formatCurrency(selectedPkg.shop_price)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="p-8 border-2 border-dashed rounded-xl text-center space-y-2 opacity-50">
-                                        <Zap className="w-8 h-8 mx-auto mb-2" />
-                                        <p className="text-sm font-medium">Select a data bundle to begin</p>
-                                    </div>
-                                )}
-
-                                <form onSubmit={handlePurchase} className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="phone">Phone Number (Data Receiver)</Label>
-                                        <Input 
-                                            id="phone" 
-                                            placeholder="e.g. 0244123456" 
-                                            value={phoneNumber}
-                                            onChange={(e) => setPhoneNumber(e.target.value)}
-                                            required
-                                            disabled={!selectedPkg}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="email">Email Address</Label>
-                                        <Input 
-                                            id="email" 
-                                            type="email" 
-                                            placeholder="your@email.com" 
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            required
-                                            disabled={!selectedPkg}
-                                        />
-                                    </div>
-                                    
-                                    <div className="pt-4 space-y-3">
-                                        <div className="bg-emerald-50 text-emerald-700 p-3 rounded-lg text-[11px] font-medium flex gap-2">
-                                            <ShieldCheck className="w-4 h-4 flex-shrink-0" />
-                                            <span>Secure fast payment via Paystack. Bundle will be sent instantly after payment.</span>
-                                        </div>
-                                        <Button 
-                                            className="w-full h-12 text-lg font-bold shadow-lg" 
-                                            disabled={!selectedPkg || isProcessing}
-                                        >
-                                            {isProcessing ? (
-                                                <Loader2 className="w-5 h-5 animate-spin" />
-                                            ) : (
-                                                `Buy Now • ${selectedPkg ? formatCurrency(selectedPkg.shop_price) : ''}`
-                                            )}
-                                        </Button>
-                                    </div>
-                                </form>
-                            </CardContent>
-                        </Card>
-
-                        <div className="mt-8 text-center space-y-4">
-                            <div className="flex items-center justify-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                                <span>Powered by</span>
-                                <span className="text-primary tracking-tight">LASTHOPE</span>
-                            </div>
-                            <div className="flex items-center justify-center gap-4 text-muted-foreground opacity-50 grayscale contrast-125">
-                                <span className="text-xs font-bold">MTN</span>
-                                <span className="text-xs font-bold">TELECEL</span>
-                                <span className="text-xs font-bold">AT</span>
-                            </div>
+            <div className="max-w-6xl mx-auto px-4 -mt-8 relative z-20 space-y-8">
+                {networks.map(network => (
+                    <div key={network} className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-1 h-8 rounded-full ${getNetworkColor(network)}`} />
+                            <h2 className="text-xl font-bold">{network} Bundles</h2>
                         </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {packages.filter(p => p.network === network).map(pkg => (
+                                <button
+                                    key={pkg.id}
+                                    type="button"
+                                    onClick={() => setSelectedPkg(pkg)}
+                                    aria-label={`Buy ${network} ${pkg.size} for ${formatCurrency(pkg.shop_price)}`}
+                                    className="rounded-[1.75rem] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                                >
+                                    <Card className="cursor-pointer border-2 border-transparent transition-all hover:scale-[1.02] hover:border-primary/40 active:scale-95">
+                                        <CardContent className="p-0 overflow-hidden">
+                                            <div className={`h-2 bg-gradient-to-r ${getNetworkGradient(network)}`} />
+                                            <div className="p-5 flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-sm font-medium text-muted-foreground uppercase">{network}</p>
+                                                    <h3 className="text-2xl font-black tracking-tight mt-1 !text-left">{pkg.size}</h3>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-2xl font-black text-primary">{formatCurrency(pkg.shop_price)}</p>
+                                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Instant Delivery</p>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+
+                {packages.length === 0 && (
+                    <Card className="p-10 text-center text-muted-foreground">This shop has no bundles available right now.</Card>
+                )}
+
+                <div className="pt-4 text-center space-y-4">
+                    <div className="flex items-center justify-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                        <span>Powered by</span>
+                        <span className="text-primary tracking-tight">LASTHOPE</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-4 text-muted-foreground opacity-50 grayscale contrast-125">
+                        <span className="text-xs font-bold">MTN</span>
+                        <span className="text-xs font-bold">TELECEL</span>
+                        <span className="text-xs font-bold">AT</span>
                     </div>
                 </div>
             </div>
+
+            {/* Checkout: one modal on phone, tablet and laptop */}
+            <Dialog open={!!selectedPkg} onOpenChange={(open) => { if (!open && !isProcessing) setSelectedPkg(null) }}>
+                <DialogContent className="w-[calc(100%-1.5rem)] max-w-md max-h-[92vh] overflow-y-auto rounded-[1.75rem] border-t-4 border-t-primary p-5 sm:p-6">
+                    <DialogHeader className="space-y-1.5 text-left">
+                        <DialogTitle className="flex items-center gap-2 !text-left">
+                            <ShoppingCart className="w-5 h-5 text-primary" />
+                            Complete order
+                        </DialogTitle>
+                        <DialogDescription className="text-left">Enter your details to receive your bundle.</DialogDescription>
+                    </DialogHeader>
+
+                    {selectedPkg && (
+                        <>
+                            <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 space-y-1">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium opacity-70">Selected package</span>
+                                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-0.5 rounded-full uppercase">{selectedPkg.network}</span>
+                                </div>
+                                <p className="text-xl font-black">{selectedPkg.size}</p>
+                                <div className="flex items-center justify-between pt-2 border-t mt-2">
+                                    <span className="text-sm">Total amount</span>
+                                    <span className="text-xl font-black text-primary">{formatCurrency(selectedPkg.shop_price)}</span>
+                                </div>
+                            </div>
+
+                            <form onSubmit={handlePurchase} className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone">Phone number (data receiver)</Label>
+                                    <Input
+                                        id="phone"
+                                        type="tel"
+                                        inputMode="tel"
+                                        autoComplete="tel"
+                                        autoFocus
+                                        placeholder="e.g. 0244123456"
+                                        value={phoneNumber}
+                                        onChange={(e) => setPhoneNumber(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="email">Email address</Label>
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        inputMode="email"
+                                        autoComplete="email"
+                                        placeholder="your@email.com"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="bg-emerald-50 text-emerald-700 p-3 rounded-lg text-[11px] font-medium flex gap-2">
+                                    <ShieldCheck className="w-4 h-4 flex-shrink-0" />
+                                    <span>Secure fast payment via Paystack. Bundle will be sent instantly after payment.</span>
+                                </div>
+
+                                <Button className="w-full h-12 text-lg font-bold shadow-lg" disabled={isProcessing}>
+                                    {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : `Buy now • ${formatCurrency(selectedPkg.shop_price)}`}
+                                </Button>
+                            </form>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
