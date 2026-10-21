@@ -43,6 +43,7 @@ import {
 import { toast } from 'sonner'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { usePackagePrices } from '@/hooks/use-package-prices'
+import { ShopBulkPricing } from '@/components/shop/shop-bulk-pricing'
 
 interface Shop {
     id: string
@@ -482,6 +483,13 @@ export default function MyShopPage() {
                 </TabsContent>
 
                 <TabsContent value="packages" className="space-y-4 pt-4">
+                    {shop && (
+                        <ShopBulkPricing
+                            shopId={shop.id}
+                            packages={packages.map(p => ({ id: p.id, network: p.network, size: p.size, cost: priceFor(p as any), customPrice: p.shop_config.custom_price ? Number(p.shop_config.custom_price) : null }))}
+                            onSaved={rows => setPackages(prev => prev.map(p => { const r = rows.find(x => x.package_id === p.id); return r ? { ...p, shop_config: { ...p.shop_config, custom_price: r.custom_price, profit_margin: r.profit_margin } } : p }))}
+                        />
+                    )}
                     <Card>
                         <CardHeader>
                             <CardTitle>Manage Shop Packages</CardTitle>
