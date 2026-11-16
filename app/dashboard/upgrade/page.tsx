@@ -12,6 +12,9 @@ import { cn } from '@/lib/utils'
 import { useTutorial } from '@/hooks/useTutorial'
 import { HelpButton } from '@/components/tutorial/HelpButton'
 import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
+import { MomoPayerFields } from '@/components/pay/momo-payer-fields'
+import type { MomoNetwork } from '@/components/pay/use-momo-payment'
+import { toLocalPhone } from '@/lib/phone'
 
 // Per-tier card styling. The four built-in tiers have their own look; any other role
 // an admin adds gets this neutral card, with its badge in the role's colour.
@@ -85,7 +88,17 @@ export default function UpgradePage() {
     const [prices, setPrices] = useState<Record<string, number>>({})
     const [isLoading, setIsLoading] = useState(true)
     const [isProcessing, setIsProcessing] = useState<string | null>(null)
-    const [payTier, setPayTier] = useState<string | null>(null)
+    const [payOpen, setPayOpen] = useState(false)
+    const [momoNetwork, setMomoNetwork] = useState<MomoNetwork>('mtn')
+    const [momoPhone, setMomoPhone] = useState('')
+    // Snapshot taken when the buyer presses pay, so the dialog (and "Try again") never charges anything else.
+    const [charge, setCharge] = useState<{ tier: string; total: number; label: string; network: MomoNetwork; phone: string } | null>(null)
+
+    // Prefill the MoMo number from the profile phone without overriding user input.
+    useEffect(() => {
+        const p = dbUser?.phone_number
+        if (p) setMomoPhone((cur) => cur || p)
+    }, [dbUser?.phone_number])
 
     // Roles an admin has switched on for purchase, cheapest first
     const [tiers, setTiers] = useState<string[]>([])
@@ -166,8 +179,16 @@ export default function UpgradePage() {
     }, [isVerifying])
 
     function startUpgrade(tier: string) {
-        // Opens the mobile-money dialog; the server prices the tier itself.
-        setPayTier(tier)
+        const local = toLocalPhone(momoPhone)
+        if (!local) {
+            toast.error('Enter a valid Ghana mobile money number')
+            return
+        }
+        const price = prices[tier]
+        if (!price || price <= 0) return
+        // Opens the mobile-money dialog; the server prices the tier itself (no fee on upgrades).
+        setCharge({ tier, total: price, label: `Upgrade to ${getRoleConfig(tier).label}`, network: momoNetwork, phone: local })
+        setPayOpen(true)
     }
 
     if (isLoading || isVerifying) {
@@ -253,6 +274,20 @@ export default function UpgradePage() {
                         </p>
                     </div>
 
+                    {/* Mobile money payer details */}
+                    <div className="neo-raised w-full max-w-md rounded-[1.75rem] p-5 mb-8 space-y-3 border border-white/10">
+                        <p className="text-sm font-black text-foreground">Pay with Mobile Money</p>
+                        <MomoPayerFields
+                            idPrefix="upgrade-momo"
+                            network={momoNetwork}
+                            phone={momoPhone}
+                            onNetworkChange={setMomoNetwork}
+                            onPhoneChange={setMomoPhone}
+                            disabled={payOpen}
+                            helper="You will get a prompt on this number to approve the payment."
+                        />
+                    </div>
+
                     {/* Tier Cards Grid */}
                     <div id="pricing-plans" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 lg:gap-6 mb-12 w-full max-w-5xl items-stretch">
                         {tiers.map((tier) => {
@@ -321,13 +356,13 @@ export default function UpgradePage() {
 
                                     <Button
                                         onClick={() => startUpgrade(tier)}
-                                        disabled={isProcessing !== null || !hasPrice}
+                                        disabled={isProcessing !== null || !hasPrice || payOpen}
                                         className={`clay w-full h-11 sm:h-12 rounded-xl text-sm sm:text-base font-black transition-all active:translate-y-px text-white ${style.buttonClass}`}
                                     >
                                         {isProcessing === tier ? (
                                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                                         ) : (
-                                            'Upgrade Now'
+                                            hasPrice ? `Pay GH₵${price.toFixed(2)} with MoMo` : 'Upgrade Now'
                                         )}
                                     </Button>
                                 </div>
@@ -354,22 +389,22 @@ export default function UpgradePage() {
                 </div>
             </div>
 
+            {charge && (
             <MomoPayDialog
-                open={payTier !== null}
-                onOpenChange={(o) => { if (!o) setPayTier(null) }}
+                open={payOpen}
+                onOpenChange={setPayOpen}
                 purpose="upgrade"
-                payload={{ tier: payTier }}
-                summary={{
-                    label: payTier ? `Upgrade to ${getRoleConfig(payTier).label}` : 'Upgrade',
-                    total: payTier ? (prices[payTier] ?? 0) : 0,
-                }}
+                payload={{ tier: charge.tier }}
+                summary={{ label: charge.label, total: charge.total }}
+                autoStart={{ network: charge.network, phone: charge.phone }}
                 onSuccess={async () => {
-                    setPayTier(null)
+                    setPayOpen(false)
                     // Same outcome as the old ?success=true flow: reload the user's role, then celebrate.
                     await refreshUser()
                     setShowCongrats(true)
                 }}
             />
+            )}
         </>
     )
 }
