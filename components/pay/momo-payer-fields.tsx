@@ -46,8 +46,9 @@ export function MomoPayerFields({
           value={phone}
           onChange={(e) => onPhoneChange(e.target.value)}
           disabled={disabled}
+          aria-describedby={helper ? `${idPrefix}-phone-help` : undefined}
         />
-        {helper && <p className="text-xs text-muted-foreground">{helper}</p>}
+        {helper && <p id={`${idPrefix}-phone-help`} className="text-xs text-muted-foreground">{helper}</p>}
       </div>
     </div>
   )

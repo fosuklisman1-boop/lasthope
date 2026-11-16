@@ -439,6 +439,9 @@ function GuestPurchaseContent() {
                                     guestEmail={charge.email}
                                     autoStart={{ network: charge.network, phone: charge.phone }}
                                     onSuccess={(reference) => {
+                                        // Clear the selection and snapshot so no live pay button can reappear during navigation.
+                                        setSelectedPackage(null)
+                                        setCharge(null)
                                         setPayOpen(false)
                                         router.push(`/s/order/${reference}?success=true`)
                                     }}

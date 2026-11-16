@@ -23,6 +23,7 @@ import { storefrontTotal } from '@/lib/pay/fee'
 import { MomoPayerFields } from '@/components/pay/momo-payer-fields'
 import type { MomoNetwork } from '@/components/pay/use-momo-payment'
 import { toLocalPhone } from '@/lib/phone'
+import { validateGhanaianPhone } from '@/lib/phone-validation'
 
 interface Shop {
     id: string
@@ -62,6 +63,7 @@ export default function StorefrontPage() {
     const [payOpen, setPayOpen] = useState(false)
     const [momoNetwork, setMomoNetwork] = useState<MomoNetwork>('mtn')
     const [momoPhone, setMomoPhone] = useState('')
+    const [phoneError, setPhoneError] = useState('')
     // Snapshot taken when the buyer presses pay, so the dialog (and "Try again") never charges anything else.
     const [charge, setCharge] = useState<{
         payload: Record<string, unknown>
@@ -105,6 +107,11 @@ export default function StorefrontPage() {
     const handlePurchase = (e: React.FormEvent) => {
         e.preventDefault()
         if (!selectedPkg || !shop || !phoneNumber || !email) return
+        const recipient = validateGhanaianPhone(phoneNumber)
+        if (!recipient.isValid) {
+            setPhoneError(recipient.error || 'Enter a valid Ghana phone number')
+            return
+        }
         const local = toLocalPhone(momoPhone)
         if (!local) {
             toast.error('Enter a valid Ghana mobile money number')
@@ -112,7 +119,7 @@ export default function StorefrontPage() {
         }
         // Direct mobile-money charge: the pay dialog drives the charge instead of a Paystack redirect.
         setCharge({
-            payload: { packageId: selectedPkg.id, phoneNumber, email, shopId: shop.id },
+            payload: { packageId: selectedPkg.id, phoneNumber: recipient.normalizedNumber || phoneNumber, email, shopId: shop.id },
             // Display only: the server recomputes the real amount from the package and shop.
             total: storefrontTotal(selectedPkg.shop_price),
             label: `${selectedPkg.network} ${selectedPkg.size}`,
@@ -279,10 +286,11 @@ export default function StorefrontPage() {
                                         autoFocus
                                         placeholder="e.g. 0244123456"
                                         value={phoneNumber}
-                                        onChange={(e) => setPhoneNumber(e.target.value)}
+                                        onChange={(e) => { setPhoneNumber(e.target.value); setPhoneError('') }}
                                         required
                                         disabled={payOpen}
                                     />
+                                    {phoneError && <p className="text-xs text-red-500 font-medium">{phoneError}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Email address</Label>
@@ -337,6 +345,9 @@ export default function StorefrontPage() {
                     guestEmail={charge.email}
                     autoStart={{ network: charge.network, phone: charge.phone }}
                     onSuccess={(reference) => {
+                        // Clear the selection and snapshot so no live pay button can reappear during navigation.
+                        setSelectedPkg(null)
+                        setCharge(null)
                         setPayOpen(false)
                         router.push(`/s/order/${reference}?success=true`)
                     }}

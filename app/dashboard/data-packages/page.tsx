@@ -1192,7 +1192,7 @@ export default function DataPackagesPage() {
                                     <Alert variant="destructive">
                                         <AlertCircle className="w-4 h-4" />
                                         <AlertDescription>
-                                            Insufficient balance. Please top up your wallet.
+                                            Insufficient wallet balance — top up your wallet to pay from it, or pay with Mobile Money below.
                                         </AlertDescription>
                                     </Alert>
                                 )}

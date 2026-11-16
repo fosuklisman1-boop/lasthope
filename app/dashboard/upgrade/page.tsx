@@ -91,6 +91,7 @@ export default function UpgradePage() {
     const [payOpen, setPayOpen] = useState(false)
     const [momoNetwork, setMomoNetwork] = useState<MomoNetwork>('mtn')
     const [momoPhone, setMomoPhone] = useState('')
+    const [upgradedTier, setUpgradedTier] = useState<string | null>(null)
     // Snapshot taken when the buyer presses pay, so the dialog (and "Try again") never charges anything else.
     const [charge, setCharge] = useState<{ tier: string; total: number; label: string; network: MomoNetwork; phone: string } | null>(null)
 
@@ -182,6 +183,9 @@ export default function UpgradePage() {
         const local = toLocalPhone(momoPhone)
         if (!local) {
             toast.error('Enter a valid Ghana mobile money number')
+            const el = document.getElementById('upgrade-momo-phone')
+            el?.scrollIntoView({ block: 'center' })
+            el?.focus()
             return
         }
         const price = prices[tier]
@@ -356,13 +360,13 @@ export default function UpgradePage() {
 
                                     <Button
                                         onClick={() => startUpgrade(tier)}
-                                        disabled={isProcessing !== null || !hasPrice || payOpen}
+                                        disabled={isProcessing !== null || !hasPrice || payOpen || showCongrats || upgradedTier === tier}
                                         className={`clay w-full h-11 sm:h-12 rounded-xl text-sm sm:text-base font-black transition-all active:translate-y-px text-white ${style.buttonClass}`}
                                     >
                                         {isProcessing === tier ? (
                                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                                         ) : (
-                                            hasPrice ? `Pay GH₵${price.toFixed(2)} with MoMo` : 'Upgrade Now'
+                                            upgradedTier === tier ? 'Upgraded' : hasPrice ? `Pay GH₵${price.toFixed(2)} with MoMo` : 'Upgrade Now'
                                         )}
                                     </Button>
                                 </div>
@@ -398,6 +402,9 @@ export default function UpgradePage() {
                 summary={{ label: charge.label, total: charge.total }}
                 autoStart={{ network: charge.network, phone: charge.phone }}
                 onSuccess={async () => {
+                    // Never leave a live pay button for the tier just bought.
+                    setUpgradedTier(charge.tier)
+                    setCharge(null)
                     setPayOpen(false)
                     // Same outcome as the old ?success=true flow: reload the user's role, then celebrate.
                     await refreshUser()
