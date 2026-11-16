@@ -2,18 +2,27 @@ import { describe, it, expect } from 'vitest'
 import { PayError } from './errors'
 import { prepareTopup, prepareUpgrade, prepareDirectBuy, markPaymentFailed } from './prepare-wallet'
 
-type Tables = Record<string, { one?: any; list?: any[] }>
+type Tables = Record<string, { one?: any; list?: any[]; bySlug?: Record<string, any> }>
 
 function fake(tables: Tables) {
   const inserts: any[] = []
   const updates: any[] = []
+  const queries: { table: string; filters: [string, any][] }[] = []
   const sb: any = {
     from(table: string) {
       const t = tables[table] ?? {}
+      const filters: [string, any][] = []
+      queries.push({ table, filters })
+      const row = () => {
+        if (t.bySlug) { const f = filters.find(x => x[0] === 'slug'); return f ? t.bySlug[f[1]] ?? null : null }
+        return t.one ?? null
+      }
       const api: any = {
-        select: () => api, eq: () => api, in: () => api, is: () => api,
-        single: async () => ({ data: t.one ?? null, error: t.one ? null : { code: 'PGRST116' } }),
-        maybeSingle: async () => ({ data: t.one ?? null, error: null }),
+        select: () => api, is: () => api,
+        eq: (c: string, v: any) => { filters.push([c, v]); return api },
+        in: (c: string, v: any) => { filters.push([c, v]); return api },
+        single: async () => ({ data: row(), error: row() ? null : { code: 'PGRST116' } }),
+        maybeSingle: async () => ({ data: row(), error: null }),
         then: (res: any, rej: any) => Promise.resolve({ data: t.list ?? [], error: null }).then(res, rej),
         insert: (row: any) => {
           inserts.push({ table, row })
@@ -30,7 +39,7 @@ function fake(tables: Tables) {
       return api
     },
   }
-  return { sb, inserts, updates }
+  return { sb, inserts, updates, queries }
 }
 
 describe('prepareTopup', () => {
@@ -56,23 +65,30 @@ describe('prepareTopup', () => {
 })
 
 describe('prepareUpgrade', () => {
-  const base = (userRole: any, target: any, extra: Tables = {}) => ({
-    users: { one: { role: userRole } },
-    wallets: { one: { id: 'w1' } },
-    roles: { one: target },
-    ...extra,
-  })
-  it('rejects admins', async () => {
-    const { sb } = fake({ users: { one: { role: 'admin' } }, wallets: { one: { id: 'w1' } }, roles: { one: undefined } })
+  it('rejects an admin user even for an upgradable tier', async () => {
+    const { sb, inserts } = fake({
+      users: { one: { role: 'admin' } }, wallets: { one: { id: 'w1' } },
+      roles: { bySlug: { admin: { slug: 'admin', is_reseller: false }, agent: { slug: 'agent', is_reseller: true, upgradable: true, upgrade_price: 80 } } },
+    })
     await expect(prepareUpgrade(sb, { userId: 'u1', email: 'a@b.c', tier: 'agent' })).rejects.toMatchObject({ httpStatus: 400 })
+    expect(inserts).toHaveLength(0)
+  })
+  it('rejects admin as the target tier', async () => {
+    const { sb } = fake({
+      users: { one: { role: 'user' } }, wallets: { one: { id: 'w1' } },
+      roles: { bySlug: { user: { slug: 'user', is_reseller: false }, admin: { slug: 'admin', upgradable: true, upgrade_price: 99 } } },
+    })
+    await expect(prepareUpgrade(sb, { userId: 'u1', email: 'a@b.c', tier: 'admin' })).rejects.toMatchObject({ httpStatus: 400 })
   })
   it('rejects a non-upgradable target', async () => {
     // roles fake returns the same row for current and target lookups
-    const { sb } = fake(base('user', { slug: 'user', is_reseller: false, upgradable: false, upgrade_price: 50 }))
+    const { sb } = fake({ users: { one: { role: 'user' } }, wallets: { one: { id: 'w1' } },
+      roles: { bySlug: { user: { slug: 'user' }, agent: { slug: 'agent', is_reseller: true, upgradable: false, upgrade_price: 50 } } } })
     await expect(prepareUpgrade(sb, { userId: 'u1', email: 'a@b.c', tier: 'agent' })).rejects.toMatchObject({ httpStatus: 400 })
   })
   it('prepares a valid upgrade at the role price with no fee', async () => {
-    const { sb, inserts } = fake(base('user', { slug: 'agent', is_reseller: true, upgradable: true, upgrade_price: 80 }))
+    const { sb, inserts } = fake({ users: { one: { role: 'user' } }, wallets: { one: { id: 'w1' } },
+      roles: { bySlug: { user: { slug: 'user' }, agent: { slug: 'agent', is_reseller: true, upgradable: true, upgrade_price: 80 } } } })
     const r = await prepareUpgrade(sb, { userId: 'u1', email: 'a@b.c', tier: 'agent' })
     expect(r.totalAmount).toBe(80)
     expect(r.reference.startsWith('upgrade_')).toBe(true)
@@ -85,15 +101,17 @@ describe('prepareUpgrade', () => {
 describe('prepareDirectBuy', () => {
   const pkg = { id: 'p1', price: 10, network: 'MTN', size: '1GB', is_available: true }
   it('404s an unavailable package', async () => {
-    const { sb } = fake({ users: { one: { role: 'user' } } })
+    const { sb, queries } = fake({ users: { one: { role: 'user' } } })
     await expect(prepareDirectBuy(sb, { userId: 'u1', email: 'a@b.c', packageId: 'p1', phoneNumber: '0200000000' })).rejects.toMatchObject({ httpStatus: 404 })
+    const q = queries.find(x => x.table === 'data_packages')!
+    expect(q.filters).toEqual(expect.arrayContaining([['id', 'p1'], ['is_available', true]]))
   })
   it('400s a bad phone', async () => {
     const { sb } = fake({ data_packages: { one: pkg }, users: { one: { role: 'user' } } })
     await expect(prepareDirectBuy(sb, { userId: 'u1', email: 'a@b.c', packageId: 'p1', phoneNumber: 'nope' })).rejects.toMatchObject({ httpStatus: 400 })
   })
   it('prepares a valid purchase', async () => {
-    const { sb, inserts } = fake({
+    const { sb, inserts, queries } = fake({
       data_packages: { one: pkg }, users: { one: { role: 'user' } }, wallets: { one: { id: 'w1' } },
       admin_settings: { list: [{ key: 'paystack_fee_percent', value: 2 }] },
     })
@@ -101,6 +119,8 @@ describe('prepareDirectBuy', () => {
     expect(r.reference.startsWith('DBY-')).toBe(true)
     expect(r.totalAmount).toBeCloseTo(10.2, 2)
     const row = inserts.find(i => i.table === 'wallet_payments').row
+    expect(queries.find(x => x.table === 'data_packages')!.filters).toEqual(expect.arrayContaining([['is_available', true]]))
+    expect(row.user_id).toBe('u1')
     expect(row.amount).toBe(10)
     expect(row.metadata).toMatchObject({ package_id: 'p1', phone_number: '+233200000000', channel: 'momo_charge' })
   })
