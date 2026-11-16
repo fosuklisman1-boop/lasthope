@@ -3,6 +3,7 @@ import { sendWalletTopupSuccessEmail } from './email-service'
 import { sendWalletTopupSuccessSMS, sendRoleUpgradeSuccessSMS } from './sms-service'
 import { calculatePaystackFee } from './utils'
 import { roleConfig } from '@/lib/roles'
+import { placeOrder } from './orders'
 
 // All GST- guest/shop orders are initialized with this fixed Paystack fee
 // percentage (see app/api/guest/purchase/initialize/route.ts).
@@ -38,7 +39,8 @@ export async function processCompletedWalletPayment(reference: string, providerM
         return { success: false, error: 'Payment not found' }
     }
 
-    console.log(`[PaymentProcess] Found payment record. Current status: ${payment.status}, Metadata:`, payment.metadata);
+    // Do not log metadata: direct-buy rows carry the recipient phone number.
+    console.log(`[PaymentProcess] Found payment record. Current status: ${payment.status}`);
 
     // Redirect to upgrade process if this is actually a role upgrade
     const isUpgrade = !!payment.metadata?.target_role || reference.startsWith('upgrade_') || reference.startsWith('agent_upgrade_')
@@ -177,6 +179,66 @@ export async function processCompletedWalletPayment(reference: string, providerM
     }
 
     return { success: true }
+}
+
+/**
+ * Completes a direct-buy (`DBY-`) payment: credit the wallet exactly the
+ * package price via the normal top-up path (amount-checked, idempotent), then
+ * place the order with the payment reference as the idempotency key.
+ *
+ * placeOrder is attempted on EVERY call, including when the credit step
+ * reports alreadyProcessed, so a retry (poll or webhook) heals a payment that
+ * was credited but whose order failed. If the order cannot be placed the
+ * money stays in the wallet and `orderFailed` is reported.
+ */
+export async function processCompletedDirectBuy(
+    reference: string,
+    providerMetadata: any,
+    sb?: any,
+): Promise<PaymentResult & { orderFailed?: boolean }> {
+    const supabase = sb ?? createServerClient()
+
+    const credit = await processCompletedWalletPayment(reference, providerMetadata)
+    if (!credit.success) return credit
+
+    // Only buy against a payment that is actually completed (credited). An
+    // `alreadyProcessed` result can also mean the row is failed/cancelled;
+    // placing an order then would spend wallet money that was never paid in.
+    const { data: payment } = await supabase
+        .from('wallet_payments')
+        .select('user_id, status, metadata')
+        .eq('reference', reference)
+        .maybeSingle()
+
+    if (!payment || payment.status !== 'completed') {
+        console.error(`[DirectBuy] Payment ${reference} is not completed; not placing order`)
+        return { success: false, error: 'Payment not completed' }
+    }
+
+    const meta = (payment.metadata ?? {}) as any
+    const result = await placeOrder({
+        userId: payment.user_id,
+        packageId: meta.package_id,
+        phoneNumber: meta.phone_number,
+        idempotencyKey: reference,
+        source: 'direct_buy',
+    }, supabase)
+
+    if (result.ok) return { success: true, alreadyProcessed: credit.alreadyProcessed }
+
+    // A concurrent attempt (webhook vs poll) may have won the insert race; the
+    // loser gets order_failed and is refunded by placeOrder. Treat the
+    // payment as fulfilled if the keyed order exists.
+    const { data: existing } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('user_id', payment.user_id)
+        .eq('idempotency_key', reference)
+        .maybeSingle()
+    if (existing) return { success: true, alreadyProcessed: credit.alreadyProcessed }
+
+    console.error(`[DirectBuy] Order not placed for ${reference}: ${result.code}`)
+    return { success: true, orderFailed: true, alreadyProcessed: credit.alreadyProcessed }
 }
 
 /**

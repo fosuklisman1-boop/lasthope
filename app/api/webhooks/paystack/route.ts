@@ -69,6 +69,28 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ received: true }, { status: 200 })
             }
 
+            // Direct buy: credit the package price to the wallet (amount-checked
+            // inside), then place the order keyed by the reference. Idempotent,
+            // so this and the /api/pay/status poll can both run it.
+            if (reference.startsWith('DBY-')) {
+                if (typeof paidAmountKobo !== 'number') {
+                    console.error('[PaystackWebhook] DBY event without amount, ignoring:', reference)
+                    return NextResponse.json({ received: true }, { status: 200 })
+                }
+                const { processCompletedDirectBuy } = await import('@/lib/payments')
+                const result = await processCompletedDirectBuy(reference, event.data, supabase)
+
+                if (!result.success) {
+                    console.error('[PaystackWebhook] processCompletedDirectBuy FAILED:', result.error)
+                } else if (result.orderFailed) {
+                    console.error('[PaystackWebhook] processCompletedDirectBuy paid but order not placed:', reference)
+                } else {
+                    console.log('[PaystackWebhook] processCompletedDirectBuy SUCCESS')
+                }
+
+                return NextResponse.json({ received: true }, { status: 200 })
+            }
+
             // Regular wallet top-up: verify amount against the wallet_payments record
             const { data: payment } = await supabase
                 .from('wallet_payments')
