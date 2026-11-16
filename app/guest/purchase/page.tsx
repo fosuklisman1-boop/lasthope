@@ -31,6 +31,9 @@ import { toast } from 'sonner'
 import Image from 'next/image'
 import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
 import { storefrontTotal } from '@/lib/pay/fee'
+import { MomoPayerFields } from '@/components/pay/momo-payer-fields'
+import type { MomoNetwork } from '@/components/pay/use-momo-payment'
+import { toLocalPhone } from '@/lib/phone'
 
 const NETWORKS = ['MTN', 'Telecel', 'AT-iShare', 'AT-BigTime'] as const
 
@@ -48,6 +51,17 @@ function GuestPurchaseContent() {
     const [isProcessing, setIsProcessing] = useState(false)
     const [payOpen, setPayOpen] = useState(false)
     const [phoneError, setPhoneError] = useState('')
+    const [momoNetwork, setMomoNetwork] = useState<MomoNetwork>('mtn')
+    const [momoPhone, setMomoPhone] = useState('')
+    // Snapshot taken when the buyer presses pay, so the dialog (and "Try again") never charges anything else.
+    const [charge, setCharge] = useState<{
+        payload: Record<string, unknown>
+        total: number
+        label: string
+        email: string
+        network: MomoNetwork
+        phone: string
+    } | null>(null)
 
     // Tracking state
     const [trackRef, setTrackRef] = useState('')
@@ -152,7 +166,26 @@ function GuestPurchaseContent() {
             return
         }
 
+        const local = toLocalPhone(momoPhone)
+        if (!local) {
+            toast.error('Enter a valid Ghana mobile money number')
+            return
+        }
+
         // Direct mobile-money charge: the pay dialog drives the charge instead of a Paystack redirect.
+        setCharge({
+            payload: {
+                packageId: selectedPackage.id,
+                phoneNumber: phoneValidation.normalizedNumber,
+                email,
+            },
+            // Display only: the server recomputes the real amount.
+            total: storefrontTotal(selectedPackage.price),
+            label: `${selectedPackage.network} ${selectedPackage.size}`,
+            email,
+            network: momoNetwork,
+            phone: local,
+        })
         setPayOpen(true)
     }
 
@@ -312,8 +345,8 @@ function GuestPurchaseContent() {
                                                     <span className="font-bold text-slate-900">{selectedPackage.network}</span>
                                                 </div>
                                                 <div className="pt-2 border-t border-blue-200 flex justify-between items-center">
-                                                    <span className="font-bold text-slate-900">Total:</span>
-                                                    <span className="text-xl font-black text-primary">{formatCurrency(selectedPackage.price)}</span>
+                                                    <span className="font-bold text-slate-900">Total to pay (incl. payment fee):</span>
+                                                    <span className="text-xl font-black text-primary">{formatCurrency(storefrontTotal(selectedPackage.price))}</span>
                                                 </div>
                                             </div>
 
@@ -322,7 +355,7 @@ function GuestPurchaseContent() {
                                                 onSubmit={(e) => { e.preventDefault(); handleInitializePurchase() }}
                                             >
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="phone">Recipient phone number</Label>
+                                                    <Label htmlFor="phone">Number to receive the data</Label>
                                                     <Input
                                                         id="phone"
                                                         type="tel"
@@ -336,6 +369,7 @@ function GuestPurchaseContent() {
                                                             setPhoneError('')
                                                         }}
                                                         className={cn(phoneError && "border-red-500 focus-visible:ring-red-500")}
+                                                        disabled={payOpen}
                                                     />
                                                     {phoneError && <p className="text-xs text-red-500 font-medium">{phoneError}</p>}
                                                 </div>
@@ -350,14 +384,29 @@ function GuestPurchaseContent() {
                                                         placeholder="for order tracking & receipt"
                                                         value={email}
                                                         onChange={(e) => setEmail(e.target.value)}
+                                                        disabled={payOpen}
                                                     />
                                                     <p className="text-[10px] text-slate-400">We will send your order tracking link here.</p>
+                                                </div>
+
+                                                <div className="space-y-3 rounded-xl border border-slate-200 p-4">
+                                                    <p className="text-sm font-semibold text-slate-900">Pay with Mobile Money</p>
+                                                    <MomoPayerFields
+                                                        idPrefix="guest-momo"
+                                                        network={momoNetwork}
+                                                        phone={momoPhone}
+                                                        onNetworkChange={setMomoNetwork}
+                                                        onPhoneChange={setMomoPhone}
+                                                        disabled={payOpen}
+                                                        label="Mobile money number (the number that pays)"
+                                                        helper="This can be different from the number receiving the data."
+                                                    />
                                                 </div>
 
                                                 <Button
                                                     type="submit"
                                                     className="w-full h-14 bg-[#0056B3] hover:bg-[#004494] text-white font-bold text-lg rounded-xl shadow-lg shadow-blue-500/20 disabled:opacity-50"
-                                                    disabled={isProcessing}
+                                                    disabled={isProcessing || payOpen}
                                                 >
                                                     {isProcessing ? (
                                                         <>
@@ -365,7 +414,7 @@ function GuestPurchaseContent() {
                                                             Processing...
                                                         </>
                                                     ) : (
-                                                        <>Pay {formatCurrency(selectedPackage.price)} now</>
+                                                        <>Pay GH₵{storefrontTotal(selectedPackage.price).toFixed(2)} with MoMo</>
                                                     )}
                                                 </Button>
                                             </form>
@@ -380,20 +429,15 @@ function GuestPurchaseContent() {
                                 </DialogContent>
                             </Dialog>
 
-                            {selectedPackage && (
+                            {charge && (
                                 <MomoPayDialog
                                     open={payOpen}
                                     onOpenChange={setPayOpen}
                                     purpose="storefront"
-                                    payload={{
-                                        packageId: selectedPackage.id,
-                                        phoneNumber: validateGhanaianPhone(phoneNumber).normalizedNumber,
-                                        email,
-                                    }}
-                                    // Display only: the server recomputes the real amount.
-                                    summary={{ label: `${selectedPackage.network} ${selectedPackage.size}`, total: storefrontTotal(selectedPackage.price) }}
-                                    guestEmail={email}
-                                    defaultPhone={phoneNumber}
+                                    payload={charge.payload}
+                                    summary={{ label: charge.label, total: charge.total }}
+                                    guestEmail={charge.email}
+                                    autoStart={{ network: charge.network, phone: charge.phone }}
                                     onSuccess={(reference) => {
                                         setPayOpen(false)
                                         router.push(`/s/order/${reference}?success=true`)

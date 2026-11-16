@@ -20,6 +20,9 @@ import { toast } from 'sonner'
 import { formatCurrency, getNetworkColor, getNetworkGradient } from '@/lib/utils'
 import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
 import { storefrontTotal } from '@/lib/pay/fee'
+import { MomoPayerFields } from '@/components/pay/momo-payer-fields'
+import type { MomoNetwork } from '@/components/pay/use-momo-payment'
+import { toLocalPhone } from '@/lib/phone'
 
 interface Shop {
     id: string
@@ -57,6 +60,17 @@ export default function StorefrontPage() {
     const [email, setEmail] = useState('')
     const [isProcessing, setIsProcessing] = useState(false)
     const [payOpen, setPayOpen] = useState(false)
+    const [momoNetwork, setMomoNetwork] = useState<MomoNetwork>('mtn')
+    const [momoPhone, setMomoPhone] = useState('')
+    // Snapshot taken when the buyer presses pay, so the dialog (and "Try again") never charges anything else.
+    const [charge, setCharge] = useState<{
+        payload: Record<string, unknown>
+        total: number
+        label: string
+        email: string
+        network: MomoNetwork
+        phone: string
+    } | null>(null)
 
     useEffect(() => {
         if (params.slug) {
@@ -90,8 +104,22 @@ export default function StorefrontPage() {
 
     const handlePurchase = (e: React.FormEvent) => {
         e.preventDefault()
-        if (!selectedPkg || !phoneNumber || !email) return
+        if (!selectedPkg || !shop || !phoneNumber || !email) return
+        const local = toLocalPhone(momoPhone)
+        if (!local) {
+            toast.error('Enter a valid Ghana mobile money number')
+            return
+        }
         // Direct mobile-money charge: the pay dialog drives the charge instead of a Paystack redirect.
+        setCharge({
+            payload: { packageId: selectedPkg.id, phoneNumber, email, shopId: shop.id },
+            // Display only: the server recomputes the real amount from the package and shop.
+            total: storefrontTotal(selectedPkg.shop_price),
+            label: `${selectedPkg.network} ${selectedPkg.size}`,
+            email,
+            network: momoNetwork,
+            phone: local,
+        })
         setPayOpen(true)
     }
 
@@ -235,14 +263,14 @@ export default function StorefrontPage() {
                                 </div>
                                 <p className="text-xl font-black">{selectedPkg.size}</p>
                                 <div className="flex items-center justify-between pt-2 border-t mt-2">
-                                    <span className="text-sm">Total amount</span>
-                                    <span className="text-xl font-black text-primary">{formatCurrency(selectedPkg.shop_price)}</span>
+                                    <span className="text-sm">Total to pay (incl. payment fee)</span>
+                                    <span className="text-xl font-black text-primary">{formatCurrency(storefrontTotal(selectedPkg.shop_price))}</span>
                                 </div>
                             </div>
 
                             <form onSubmit={handlePurchase} className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="phone">Phone number (data receiver)</Label>
+                                    <Label htmlFor="phone">Number to receive the data</Label>
                                     <Input
                                         id="phone"
                                         type="tel"
@@ -253,6 +281,7 @@ export default function StorefrontPage() {
                                         value={phoneNumber}
                                         onChange={(e) => setPhoneNumber(e.target.value)}
                                         required
+                                        disabled={payOpen}
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -266,6 +295,21 @@ export default function StorefrontPage() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         required
+                                        disabled={payOpen}
+                                    />
+                                </div>
+
+                                <div className="space-y-3 rounded-xl border p-4">
+                                    <p className="text-sm font-semibold">Pay with Mobile Money</p>
+                                    <MomoPayerFields
+                                        idPrefix="store-momo"
+                                        network={momoNetwork}
+                                        phone={momoPhone}
+                                        onNetworkChange={setMomoNetwork}
+                                        onPhoneChange={setMomoPhone}
+                                        disabled={payOpen}
+                                        label="Mobile money number (the number that pays)"
+                                        helper="This can be different from the number receiving the data."
                                     />
                                 </div>
 
@@ -274,8 +318,8 @@ export default function StorefrontPage() {
                                     <span>Secure fast payment via Paystack. Bundle will be sent instantly after payment.</span>
                                 </div>
 
-                                <Button className="w-full h-12 text-lg font-bold shadow-lg" disabled={isProcessing}>
-                                    {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : `Buy now • ${formatCurrency(selectedPkg.shop_price)}`}
+                                <Button className="w-full h-12 text-lg font-bold shadow-lg" disabled={isProcessing || payOpen}>
+                                    {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : `Pay GH₵${storefrontTotal(selectedPkg.shop_price).toFixed(2)} with MoMo`}
                                 </Button>
                             </form>
                         </>
@@ -283,16 +327,15 @@ export default function StorefrontPage() {
                 </DialogContent>
             </Dialog>
 
-            {selectedPkg && (
+            {charge && (
                 <MomoPayDialog
                     open={payOpen}
                     onOpenChange={setPayOpen}
                     purpose="storefront"
-                    payload={{ packageId: selectedPkg.id, phoneNumber, email, shopId: shop.id }}
-                    // Display only: the server recomputes the real amount from the package and shop.
-                    summary={{ label: `${selectedPkg.network} ${selectedPkg.size}`, total: storefrontTotal(selectedPkg.shop_price) }}
-                    guestEmail={email}
-                    defaultPhone={phoneNumber}
+                    payload={charge.payload}
+                    summary={{ label: charge.label, total: charge.total }}
+                    guestEmail={charge.email}
+                    autoStart={{ network: charge.network, phone: charge.phone }}
                     onSuccess={(reference) => {
                         setPayOpen(false)
                         router.push(`/s/order/${reference}?success=true`)
