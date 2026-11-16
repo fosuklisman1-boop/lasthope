@@ -51,6 +51,9 @@ import { Trash2, Upload } from 'lucide-react'
 import { useTutorial } from '@/hooks/useTutorial'
 import { HelpButton } from '@/components/tutorial/HelpButton'
 import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
+import { MomoPayerFields } from '@/components/pay/momo-payer-fields'
+import type { MomoNetwork } from '@/components/pay/use-momo-payment'
+import { toLocalPhone } from '@/lib/phone'
 import { usePaystackFeePercent } from '@/hooks/use-paystack-fee'
 
 interface ValidationResult {
@@ -94,6 +97,16 @@ export default function DataPackagesPage() {
     const [purchaseSuccess, setPurchaseSuccess] = useState(false)
     const [idempotencyKey, setIdempotencyKey] = useState('')
     const [payOpen, setPayOpen] = useState(false)
+    const [momoNetwork, setMomoNetwork] = useState<MomoNetwork>('mtn')
+    const [momoPhone, setMomoPhone] = useState('')
+    // Snapshot taken when the buyer presses pay, so the dialog (and "Try again") never charges anything else.
+    const [charge, setCharge] = useState<{
+        payload: Record<string, unknown>
+        total: number
+        label: string
+        network: MomoNetwork
+        phone: string
+    } | null>(null)
     const paystackFeePercent = usePaystackFeePercent(dbUser?.role)
 
     // Bulk Order State
@@ -109,6 +122,12 @@ export default function DataPackagesPage() {
     const totalBulkData = validationResults.reduce((sum, r) => sum + (r.isValid ? r.volume : 0), 0)
     const totalBulkCost = validationResults.reduce((sum, r) => sum + (r.isValid ? r.packagePrice : 0), 0)
 
+
+    // Prefill the MoMo number from the profile phone without overriding user input.
+    useEffect(() => {
+        const p = dbUser?.phone_number
+        if (p) setMomoPhone((cur) => cur || p)
+    }, [dbUser?.phone_number])
 
     useEffect(() => {
         fetchPackages()
@@ -239,6 +258,24 @@ export default function DataPackagesPage() {
             setPhoneError(validation.error || 'Invalid phone number')
             return
         }
+        const local = toLocalPhone(momoPhone)
+        if (!local) {
+            toast.error('Enter a valid Ghana mobile money number')
+            return
+        }
+        const price = getEffectivePrice(selectedPackage)
+        setCharge({
+            // Authed purpose: the server takes the email from the session, so none is sent.
+            payload: {
+                packageId: selectedPackage.id,
+                phoneNumber: validation.normalizedNumber || phoneNumber,
+            },
+            // Display only: the server recomputes the real amount (price for the role + fee).
+            total: price + calculatePaystackFee(price, paystackFeePercent),
+            label: `${selectedPackage.network} ${selectedPackage.size}`,
+            network: momoNetwork,
+            phone: local,
+        })
         setPayOpen(true)
     }
 
@@ -1134,7 +1171,7 @@ export default function DataPackagesPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="phone">Phone Number</Label>
+                                    <Label htmlFor="phone">Number to receive the data</Label>
                                     <Input
                                         id="phone"
                                         type="tel"
@@ -1160,6 +1197,30 @@ export default function DataPackagesPage() {
                                     </Alert>
                                 )}
 
+                                <div className="space-y-3 rounded-xl border p-4">
+                                    <p className="text-sm font-semibold">Pay with Mobile Money</p>
+                                    <MomoPayerFields
+                                        idPrefix="buy-momo"
+                                        network={momoNetwork}
+                                        phone={momoPhone}
+                                        onNetworkChange={setMomoNetwork}
+                                        onPhoneChange={setMomoPhone}
+                                        disabled={payOpen}
+                                        label="Mobile money number (the number that pays)"
+                                        helper="This can be different from the number receiving the data."
+                                    />
+                                    <Button
+                                        variant="secondary"
+                                        className="w-full"
+                                        onClick={handlePayNow}
+                                        disabled={isPurchasing || payOpen || !phoneNumber || !!phoneError}
+                                    >
+                                        {selectedPackage
+                                            ? `Pay GH₵${(getEffectivePrice(selectedPackage) + calculatePaystackFee(getEffectivePrice(selectedPackage), paystackFeePercent)).toFixed(2)} with MoMo`
+                                            : 'Pay with MoMo'}
+                                    </Button>
+                                </div>
+
                                 <div className="text-sm text-muted-foreground">
                                     Wallet Balance: <span className="font-medium text-foreground">{formatCurrency(walletBalance)}</span>
                                 </div>
@@ -1168,13 +1229,6 @@ export default function DataPackagesPage() {
                             <DialogFooter className="gap-2 sm:gap-0">
                                 <Button variant="outline" onClick={() => setSelectedPackage(null)}>
                                     Cancel
-                                </Button>
-                                <Button
-                                    variant="secondary"
-                                    onClick={handlePayNow}
-                                    disabled={isPurchasing || !phoneNumber || !!phoneError}
-                                >
-                                    Pay now with MoMo
                                 </Button>
                                 <Button
                                     onClick={handlePurchase}
@@ -1195,23 +1249,14 @@ export default function DataPackagesPage() {
                 </DialogContent>
             </Dialog>
 
+            {charge && (
             <MomoPayDialog
                 open={payOpen}
                 onOpenChange={setPayOpen}
                 purpose="direct_buy"
-                payload={{
-                    packageId: selectedPackage?.id,
-                    phoneNumber: validateGhanaianPhone(phoneNumber).normalizedNumber || phoneNumber,
-                }}
-                defaultPhone={phoneNumber}
-                // Display only: the final amount (price for the role + fee) is computed on the
-                // server and shown on the phone prompt.
-                summary={{
-                    label: selectedPackage ? `${selectedPackage.network} ${selectedPackage.size}` : 'Data bundle',
-                    total: selectedPackage
-                        ? getEffectivePrice(selectedPackage) + calculatePaystackFee(getEffectivePrice(selectedPackage), paystackFeePercent)
-                        : 0,
-                }}
+                payload={charge.payload}
+                summary={{ label: charge.label, total: charge.total }}
+                autoStart={{ network: charge.network, phone: charge.phone }}
                 onSuccess={() => {
                     setPayOpen(false)
                     setSelectedPackage(null)
@@ -1226,6 +1271,7 @@ export default function DataPackagesPage() {
                     fetchWalletBalance()
                 }}
             />
+            )}
         </div>
     )
 }

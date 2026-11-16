@@ -34,7 +34,7 @@ import { HelpButton } from '@/components/tutorial/HelpButton'
 import { isResellerRole } from '@/lib/roles'
 import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
 import { usePaystackFeePercent } from '@/hooks/use-paystack-fee'
-import { toLocalPhone } from '@/lib/paystack-charge'
+import { toLocalPhone } from '@/lib/phone'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 type MomoNetwork = 'mtn' | 'telecel' | 'airteltigo'
