@@ -37,6 +37,15 @@ import { HelpButton } from '@/components/tutorial/HelpButton'
 import { isResellerRole } from '@/lib/roles'
 import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
 import { usePaystackFeePercent } from '@/hooks/use-paystack-fee'
+import { toLocalPhone } from '@/lib/paystack-charge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
+type MomoNetwork = 'mtn' | 'telecel' | 'airteltigo'
+const NETWORKS: { value: MomoNetwork; label: string }[] = [
+    { value: 'mtn', label: 'MTN' },
+    { value: 'telecel', label: 'Telecel' },
+    { value: 'airteltigo', label: 'AirtelTigo' },
+]
 
 const QUICK_AMOUNTS = [50, 100, 200, 500]
 const MIN_AMOUNT = 5
@@ -53,6 +62,10 @@ function WalletContent() {
     const [topUpAmount, setTopUpAmount] = useState('')
     const [isProcessing, setIsProcessing] = useState(false)
     const [payOpen, setPayOpen] = useState(false)
+    const [network, setNetwork] = useState<MomoNetwork>('mtn')
+    const [momoPhone, setMomoPhone] = useState('')
+    const [chargePhone, setChargePhone] = useState('')
+    const [chargeNetwork, setChargeNetwork] = useState<MomoNetwork>('mtn')
     const paystackFeePercent = usePaystackFeePercent(dbUser?.role)
     const searchParams = useSearchParams()
 
@@ -80,6 +93,12 @@ function WalletContent() {
             }
         }
     }, [dbUser, isAuthLoading])
+
+    // Prefill the MoMo number from the profile phone without overriding user input.
+    useEffect(() => {
+        const p = dbUser?.phone_number
+        if (p) setMomoPhone((cur) => cur || p)
+    }, [dbUser?.phone_number])
 
     useEffect(() => {
         const success = searchParams.get('success')
@@ -166,7 +185,15 @@ function WalletContent() {
             return
         }
 
-        // Direct mobile-money charge: the dialog collects network/phone and drives the charge.
+        const local = toLocalPhone(momoPhone)
+        if (!local) {
+            toast.error('Enter a valid Ghana mobile money number')
+            return
+        }
+
+        // Direct mobile-money charge: the dialog auto-starts with the chosen network/number.
+        setChargeNetwork(network)
+        setChargePhone(local)
         setPayOpen(true)
     }
 
@@ -421,6 +448,31 @@ function WalletContent() {
                                     <p className="text-xs text-muted-foreground mt-1">Minimum: {formatCurrency(MIN_AMOUNT)}</p>
                                 </div>
 
+                                {/* Mobile money details */}
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="momo-network">Network</Label>
+                                        <Select value={network} onValueChange={(v) => setNetwork(v as MomoNetwork)}>
+                                            <SelectTrigger id="momo-network" className="h-12"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                {NETWORKS.map((n) => <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="momo-phone">Mobile money number</Label>
+                                        <Input
+                                            id="momo-phone"
+                                            type="tel"
+                                            inputMode="tel"
+                                            placeholder="024XXXXXXX"
+                                            value={momoPhone}
+                                            onChange={(e) => setMomoPhone(e.target.value)}
+                                            className="h-12"
+                                        />
+                                    </div>
+                                </div>
+
                                 {/* Summary */}
                                 {topUpAmount && parseFloat(topUpAmount) >= MIN_AMOUNT && (
                                     <div className="p-4 rounded-xl bg-muted/50 space-y-2">
@@ -478,7 +530,7 @@ function WalletContent() {
                                     ) : (
                                         <>
                                             <Plus className="w-5 h-5 mr-2" />
-                                            Top Up {topUpAmount && parseFloat(topUpAmount) >= MIN_AMOUNT && formatCurrency(parseFloat(topUpAmount))}
+                                            Pay {topUpAmount && parseFloat(topUpAmount) >= MIN_AMOUNT ? formatCurrency(parseFloat(topUpAmount)) : ''} with MoMo
                                         </>
                                     )}
                                 </Button>
@@ -546,6 +598,7 @@ function WalletContent() {
                 purpose="topup"
                 payload={{ amount: parseFloat(topUpAmount) || 0 }}
                 summary={{ label: 'Wallet top-up', total: totalAmount }}
+                autoStart={{ network: chargeNetwork, phone: chargePhone }}
                 onSuccess={() => {
                     setPayOpen(false)
                     setTopUpAmount('')
