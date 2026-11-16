@@ -162,7 +162,7 @@ describe('stepStates', () => {
     ['idle', undefined, P, P, P],
     ['charging', undefined, A, P, P],
     ['pay_offline', undefined, D, A, P],
-    ['pay_offline', AMBIGUOUS_MESSAGE, D, A, P],
+    ['pay_offline', AMBIGUOUS_MESSAGE, A, P, P], // charge unconfirmed: do not claim prompt sent
     ['pay_offline', CONFIRMING_MESSAGE, D, D, A],
     ['send_otp', undefined, D, A, P],
     ['send_voucher', undefined, D, A, P],

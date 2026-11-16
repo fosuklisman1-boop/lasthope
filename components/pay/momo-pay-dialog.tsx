@@ -78,8 +78,20 @@ export function MomoPayDialog(props: MomoPayDialogProps) {
     const steps = stepStates(phase, state.message)
     const masked = maskMomoPhone(autoStart.phone)
     const rows: { key: string; status: StepStatus; label: string }[] = [
-      { key: 'sent', status: steps.sent, label: steps.sent === 'done' ? `Prompt sent to ${masked}` : 'Sending the prompt to your phone…' },
-      { key: 'approve', status: steps.approve, label: 'Approve the payment on your phone (enter your MoMo PIN)' },
+      {
+        key: 'sent',
+        status: steps.sent,
+        label: steps.sent === 'done'
+          ? `Prompt sent to ${masked}`
+          : phase === 'pay_offline' ? 'Waiting for your network to send the prompt…' : 'Sending the prompt to your phone…',
+      },
+      {
+        key: 'approve',
+        status: steps.approve,
+        label: phase === 'send_otp' ? 'Enter the verification code sent to you'
+          : phase === 'send_voucher' ? 'Enter your voucher code'
+          : 'Approve the payment on your phone (enter your MoMo PIN)',
+      },
       { key: 'confirm', status: steps.confirm, label: 'Confirming your payment…' },
     ]
     return (
@@ -140,6 +152,10 @@ export function MomoPayDialog(props: MomoPayDialogProps) {
                   </li>
                 ))}
               </ol>
+
+              {!needsCode && state.message && state.message !== CONFIRMING_MESSAGE && (
+                <p className="text-sm text-amber-600">{state.message}</p>
+              )}
 
               {needsCode && (
                 <div className="space-y-3">

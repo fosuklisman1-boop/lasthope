@@ -112,9 +112,10 @@ export function stepStates(phase: Phase, message?: string): StepStates {
     case 'charging':
       return { sent: 'active', approve: 'pending', confirm: 'pending' }
     case 'pay_offline':
-      return message === CONFIRMING_MESSAGE
-        ? { sent: 'done', approve: 'done', confirm: 'active' }
-        : { sent: 'done', approve: 'active', confirm: 'pending' }
+      if (message === CONFIRMING_MESSAGE) return { sent: 'done', approve: 'done', confirm: 'active' }
+      // Charge outcome unknown (502 with a reference): do not claim the prompt was sent.
+      if (message === AMBIGUOUS_MESSAGE) return { sent: 'active', approve: 'pending', confirm: 'pending' }
+      return { sent: 'done', approve: 'active', confirm: 'pending' }
     case 'send_otp':
     case 'send_voucher':
       return { sent: 'done', approve: 'active', confirm: 'pending' }

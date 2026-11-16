@@ -18,9 +18,6 @@ import {
     Plus,
     ArrowUpRight,
     ArrowDownLeft,
-    CreditCard,
-    Smartphone,
-    Building,
     Loader2,
     TrendingUp,
     TrendingDown,
@@ -65,6 +62,7 @@ function WalletContent() {
     const [network, setNetwork] = useState<MomoNetwork>('mtn')
     const [momoPhone, setMomoPhone] = useState('')
     const [chargePhone, setChargePhone] = useState('')
+    const [charge, setCharge] = useState({ amount: 0, total: 0 })
     const [chargeNetwork, setChargeNetwork] = useState<MomoNetwork>('mtn')
     const paystackFeePercent = usePaystackFeePercent(dbUser?.role)
     const searchParams = useSearchParams()
@@ -194,6 +192,7 @@ function WalletContent() {
         // Direct mobile-money charge: the dialog auto-starts with the chosen network/number.
         setChargeNetwork(network)
         setChargePhone(local)
+        setCharge({ amount, total: amount + calculatePaystackFee(amount, paystackFeePercent) })
         setPayOpen(true)
     }
 
@@ -407,7 +406,7 @@ function WalletContent() {
                                 )}
                             </div>
                             <CardDescription className="mt-2">
-                                Add funds to your wallet using mobile money, card, or bank transfer
+                                Add funds to your wallet with a direct mobile money charge
                             </CardDescription>
                         </CardHeader>
                         <form onSubmit={(e) => { e.preventDefault(); handleTopUp(); }}>
@@ -441,6 +440,7 @@ function WalletContent() {
                                             placeholder="Enter amount"
                                             value={topUpAmount}
                                             onChange={(e) => setTopUpAmount(e.target.value)}
+                                            disabled={payOpen}
                                             className="pl-12 h-12 text-lg"
                                             min={MIN_AMOUNT}
                                         />
@@ -468,6 +468,7 @@ function WalletContent() {
                                             placeholder="024XXXXXXX"
                                             value={momoPhone}
                                             onChange={(e) => setMomoPhone(e.target.value)}
+                                            disabled={payOpen}
                                             className="h-12"
                                         />
                                     </div>
@@ -492,25 +493,6 @@ function WalletContent() {
                                     </div>
                                 )}
 
-                                {/* Payment Methods */}
-                                <div>
-                                    <Label className="text-sm text-muted-foreground mb-3 block">Payment Methods</Label>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div className="p-4 rounded-xl border bg-background text-center">
-                                            <Smartphone className="w-6 h-6 mx-auto mb-2 text-yellow-500" />
-                                            <span className="text-sm">Mobile Money</span>
-                                        </div>
-                                        <div className="p-4 rounded-xl border bg-background text-center">
-                                            <CreditCard className="w-6 h-6 mx-auto mb-2 text-blue-500" />
-                                            <span className="text-sm">Card</span>
-                                        </div>
-                                        <div className="p-4 rounded-xl border bg-background text-center">
-                                            <Building className="w-6 h-6 mx-auto mb-2 text-purple-500" />
-                                            <span className="text-sm">Bank Transfer</span>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 {/* Pay Button */}
                                 <Button
                                     type="submit"
@@ -530,7 +512,7 @@ function WalletContent() {
                                     ) : (
                                         <>
                                             <Plus className="w-5 h-5 mr-2" />
-                                            Pay {topUpAmount && parseFloat(topUpAmount) >= MIN_AMOUNT ? formatCurrency(parseFloat(topUpAmount)) : ''} with MoMo
+                                            Pay {totalAmount > 0 ? formatCurrency(totalAmount) : ''} with MoMo
                                         </>
                                     )}
                                 </Button>
@@ -596,8 +578,8 @@ function WalletContent() {
                 open={payOpen}
                 onOpenChange={setPayOpen}
                 purpose="topup"
-                payload={{ amount: parseFloat(topUpAmount) || 0 }}
-                summary={{ label: 'Wallet top-up', total: totalAmount }}
+                payload={{ amount: charge.amount }}
+                summary={{ label: 'Wallet top-up', total: charge.total }}
                 autoStart={{ network: chargeNetwork, phone: chargePhone }}
                 onSuccess={() => {
                     setPayOpen(false)
