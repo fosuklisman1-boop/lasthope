@@ -3,6 +3,7 @@ import { resolvePrice } from '@/lib/pricing'
 import { loadPricingContext } from '@/lib/pricing-context'
 import { normalizeGhanaPhone } from '@/lib/orders'
 import { PayError } from './errors'
+import { FEE_SETTING_KEYS, pickFeePercent } from './fee'
 
 export interface PreparedPayment {
   reference: string
@@ -21,17 +22,9 @@ async function getOrCreateWalletId(sb: any, userId: string): Promise<string> {
 }
 
 async function loadFeePercent(sb: any, userId: string): Promise<number> {
-  const { data: feeData } = await sb.from('admin_settings').select('key, value').in('key', ['paystack_fee_percent', 'agent_paystack_fee_percent'])
+  const { data: feeData } = await sb.from('admin_settings').select('key, value').in('key', [...FEE_SETTING_KEYS])
   const { data: u } = await sb.from('users').select('role').eq('id', userId).single()
-  const feeKey = u?.role === 'agent' ? 'agent_paystack_fee_percent' : 'paystack_fee_percent'
-  const setting = feeData?.find((s: any) => s.key === feeKey) || feeData?.find((s: any) => s.key === 'paystack_fee_percent')
-  let feePercent = 1.95
-  if (setting?.value) {
-    const v = setting.value
-    const parsed = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : 1.95
-    if (!isNaN(parsed)) feePercent = parsed
-  }
-  return feePercent
+  return pickFeePercent(feeData, u?.role)
 }
 
 async function insertPending(sb: any, row: Record<string, any>): Promise<void> {

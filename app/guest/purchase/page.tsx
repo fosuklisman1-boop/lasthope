@@ -30,6 +30,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import Image from 'next/image'
 import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
+import { storefrontTotal } from '@/lib/pay/fee'
 
 const NETWORKS = ['MTN', 'Telecel', 'AT-iShare', 'AT-BigTime'] as const
 
@@ -390,7 +391,7 @@ function GuestPurchaseContent() {
                                         email,
                                     }}
                                     // Display only: the server recomputes the real amount.
-                                    summary={{ label: `${selectedPackage.network} ${selectedPackage.size}`, total: selectedPackage.price }}
+                                    summary={{ label: `${selectedPackage.network} ${selectedPackage.size}`, total: storefrontTotal(selectedPackage.price) }}
                                     guestEmail={email}
                                     defaultPhone={phoneNumber}
                                     onSuccess={(reference) => {

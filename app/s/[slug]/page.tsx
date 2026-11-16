@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner'
 import { formatCurrency, getNetworkColor, getNetworkGradient } from '@/lib/utils'
 import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
+import { storefrontTotal } from '@/lib/pay/fee'
 
 interface Shop {
     id: string
@@ -289,7 +290,7 @@ export default function StorefrontPage() {
                     purpose="storefront"
                     payload={{ packageId: selectedPkg.id, phoneNumber, email, shopId: shop.id }}
                     // Display only: the server recomputes the real amount from the package and shop.
-                    summary={{ label: `${selectedPkg.network} ${selectedPkg.size}`, total: selectedPkg.shop_price }}
+                    summary={{ label: `${selectedPkg.network} ${selectedPkg.size}`, total: storefrontTotal(selectedPkg.shop_price) }}
                     guestEmail={email}
                     defaultPhone={phoneNumber}
                     onSuccess={(reference) => {

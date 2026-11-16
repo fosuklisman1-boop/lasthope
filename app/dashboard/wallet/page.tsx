@@ -36,6 +36,7 @@ import { useTutorial } from '@/hooks/useTutorial'
 import { HelpButton } from '@/components/tutorial/HelpButton'
 import { isResellerRole } from '@/lib/roles'
 import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
+import { usePaystackFeePercent } from '@/hooks/use-paystack-fee'
 
 const QUICK_AMOUNTS = [50, 100, 200, 500]
 const MIN_AMOUNT = 5
@@ -52,7 +53,7 @@ function WalletContent() {
     const [topUpAmount, setTopUpAmount] = useState('')
     const [isProcessing, setIsProcessing] = useState(false)
     const [payOpen, setPayOpen] = useState(false)
-    const [paystackFeePercent, setPaystackFeePercent] = useState(1.95)
+    const paystackFeePercent = usePaystackFeePercent(dbUser?.role)
     const searchParams = useSearchParams()
 
     // Tutorial hook
@@ -103,7 +104,7 @@ function WalletContent() {
 
     const fetchWalletData = async () => {
         try {
-            const [walletRes, txnsRes, feeSettingRes] = await Promise.all([
+            const [walletRes, txnsRes] = await Promise.all([
                 // Fetch wallet
                 supabase
                     .from('wallets')
@@ -129,18 +130,10 @@ function WalletContent() {
                         .eq('source', 'payment')
                         .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
                         .order('created_at', { ascending: false }),
-
-                // Fetch settings
-                supabase
-                    .from('admin_settings')
-                    .select('value')
-                    .eq('key', 'paystack_fee_percent')
-                    .single()
             ])
 
             const wallet = walletRes.data
             const txns = txnsRes.data
-            const feeSetting = feeSettingRes.data
 
             if (wallet) {
                 setWalletBalance((wallet as any).balance)
@@ -149,13 +142,6 @@ function WalletContent() {
             }
 
             setTransactions(txns || [])
-
-            if ((feeSetting as any)?.value) {
-                const val = (feeSetting as any).value
-                // Handle possible string "1.95" or number 1.95
-                const parsed = typeof val === 'string' ? parseFloat(val) : (typeof val === 'number' ? val : 1.95)
-                if (!isNaN(parsed)) setPaystackFeePercent(parsed)
-            }
         } catch (error) {
             console.error('Error fetching wallet data:', error)
         } finally {

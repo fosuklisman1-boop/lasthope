@@ -51,6 +51,7 @@ import { Trash2, Upload } from 'lucide-react'
 import { useTutorial } from '@/hooks/useTutorial'
 import { HelpButton } from '@/components/tutorial/HelpButton'
 import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
+import { usePaystackFeePercent } from '@/hooks/use-paystack-fee'
 
 interface ValidationResult {
     lineNumber: number
@@ -93,7 +94,7 @@ export default function DataPackagesPage() {
     const [purchaseSuccess, setPurchaseSuccess] = useState(false)
     const [idempotencyKey, setIdempotencyKey] = useState('')
     const [payOpen, setPayOpen] = useState(false)
-    const [paystackFeePercent, setPaystackFeePercent] = useState(1.95)
+    const paystackFeePercent = usePaystackFeePercent(dbUser?.role)
 
     // Bulk Order State
     const [bulkInputType, setBulkInputType] = useState<'text' | 'excel' | null>(null)
@@ -113,7 +114,6 @@ export default function DataPackagesPage() {
         fetchPackages()
         fetchWalletBalance()
         fetchOrdersToday()
-        fetchFeePercent()
     }, [dbUser])
 
     useEffect(() => {
@@ -155,20 +155,6 @@ export default function DataPackagesPage() {
             .single()
 
         setWalletBalance((data as any)?.balance || 0)
-    }
-
-    // Fee percent loaded the same way the wallet page does; used for the display-only preview.
-    const fetchFeePercent = async () => {
-        const { data } = await supabase
-            .from('admin_settings')
-            .select('value')
-            .eq('key', 'paystack_fee_percent')
-            .single()
-        const val = (data as any)?.value
-        if (val) {
-            const parsed = typeof val === 'string' ? parseFloat(val) : (typeof val === 'number' ? val : 1.95)
-            if (!isNaN(parsed)) setPaystackFeePercent(parsed)
-        }
     }
 
     const fetchOrdersToday = async () => {

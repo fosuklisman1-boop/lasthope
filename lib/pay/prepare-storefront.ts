@@ -1,4 +1,5 @@
-import { calculatePaystackFee, generateReferenceCode } from '@/lib/utils'
+import { generateReferenceCode } from '@/lib/utils'
+import { storefrontTotal } from './fee'
 import { resolvePrice, shopPrice } from '@/lib/pricing'
 import { loadPricingContext } from '@/lib/pricing-context'
 import { loadShopControls, loadShopLimits, loadBlockedPackageIds, limitsFor, DEFAULT_SUSPENSION_MESSAGE } from '@/lib/shop-data'
@@ -6,7 +7,6 @@ import { normalizeGhanaPhone } from '@/lib/orders'
 import { PayError } from './errors'
 import type { PreparedPayment } from './prepare-wallet'
 
-const GUEST_FEE_PERCENT = 1.95
 const round2 = (n: number) => Math.round(n * 100) / 100
 
 /** Price a shop sale: owner cost (their role/table/override prices) plus the shop's margin, capped. Fails closed. */
@@ -69,8 +69,7 @@ export async function prepareStorefront(
   }
   if (!(price > 0)) throw new PayError('This package has no valid price', 503)
 
-  const fee = calculatePaystackFee(price, GUEST_FEE_PERCENT)
-  const totalAmount = round2(price + fee)
+  const totalAmount = storefrontTotal(price) // price + GUEST_FEE_PERCENT, same helper the guest pages display
   const reference = `GST-${generateReferenceCode()}`
 
   const { error } = await sb.from('orders').insert({
