@@ -2,8 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { processCompletedWalletPayment } from '@/lib/payments'
 import crypto from 'crypto'
+import { webhookStatusFor } from '@/lib/pay/webhook-outcome'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
+
+/**
+ * 200 acknowledges the event; 500 makes Paystack redeliver it. Transient
+ * completion failures (and a DBY- 'pending') return 500 so a retry heals them;
+ * completion is idempotent, so redelivery is safe.
+ */
+function ack(result: Parameters<typeof webhookStatusFor>[0]) {
+    const status = webhookStatusFor(result)
+    return status === 200
+        ? NextResponse.json({ received: true }, { status })
+        : NextResponse.json({ received: true, retry: true }, { status })
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -35,8 +48,8 @@ export async function POST(request: NextRequest) {
             // looking up wallet_payments - GST- shop/guest orders have no
             // wallet_payments row at all, so checking that first caused
             // those orders to be silently skipped by this webhook (see M3).
+            // Not logged: metadata can carry customer data (phone numbers).
             const metadata = event.data.metadata
-            console.log(`[PaystackWebhook] Detected Metadata for ${reference}:`, metadata)
 
             const isUpgrade = metadata?.target_role || reference.startsWith('upgrade_') || metadata?.upgrade_type === 'agent' || reference.startsWith('agent_upgrade_')
 
@@ -51,7 +64,7 @@ export async function POST(request: NextRequest) {
                     console.log('[PaystackWebhook] processCompletedUpgradePayment SUCCESS')
                 }
 
-                return NextResponse.json({ received: true }, { status: 200 })
+                return ack(result)
             }
 
             const isShopOrder = reference.startsWith('GST-')
@@ -66,7 +79,7 @@ export async function POST(request: NextRequest) {
                     console.log('[PaystackWebhook] processCompletedShopOrder SUCCESS')
                 }
 
-                return NextResponse.json({ received: true }, { status: 200 })
+                return ack(result)
             }
 
             // Direct buy: credit the package price to the wallet (amount-checked
@@ -90,7 +103,7 @@ export async function POST(request: NextRequest) {
                     console.log('[PaystackWebhook] processCompletedDirectBuy SUCCESS')
                 }
 
-                return NextResponse.json({ received: true }, { status: 200 })
+                return ack(result)
             }
 
             // Regular wallet top-up: verify amount against the wallet_payments record
@@ -122,6 +135,7 @@ export async function POST(request: NextRequest) {
             } else {
                 console.log('[PaystackWebhook] processCompletedWalletPayment SUCCESS')
             }
+            return ack(result)
         }
 
         return NextResponse.json({ received: true })

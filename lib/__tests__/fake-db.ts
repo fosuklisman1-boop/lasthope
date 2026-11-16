@@ -6,7 +6,12 @@
  */
 export type Row = Record<string, any>
 
-export function fakeDb(tables: Record<string, Row[]>, rpcImpl?: (name: string, args: any) => any) {
+export function fakeDb(
+  tables: Record<string, Row[]>,
+  rpcImpl?: (name: string, args: any) => any,
+  // Return an error object to make an update on `table` fail (nothing is mutated).
+  updateError?: (table: string, patch: Row) => any,
+) {
   const rpcCalls: { name: string; args: any }[] = []
   const inserts: { table: string; row: Row }[] = []
 
@@ -16,6 +21,7 @@ export function fakeDb(tables: Record<string, Row[]>, rpcImpl?: (name: string, a
       const filters: [string, any][] = []
       let patch: Row | null = null
       const match = () => rows.filter(r => filters.every(([c, v]) => r[c] === v))
+      const failed = () => (patch && updateError ? updateError(table, patch) ?? null : null)
       const one = () => {
         if (patch) {
           const hit = match()
@@ -28,9 +34,15 @@ export function fakeDb(tables: Record<string, Row[]>, rpcImpl?: (name: string, a
         select: () => api,
         limit: () => api,
         eq: (c: string, v: any) => { filters.push([c, v]); return api },
-        single: async () => { const r = one(); return { data: r, error: r ? null : { code: 'PGRST116' } } },
-        maybeSingle: async () => ({ data: one(), error: null }),
-        then: (res: any, rej: any) => Promise.resolve({ data: patch ? (one(), match()) : match(), error: null }).then(res, rej),
+        single: async () => {
+          const err = failed(); if (err) return { data: null, error: err }
+          const r = one(); return { data: r, error: r ? null : { code: 'PGRST116' } }
+        },
+        maybeSingle: async () => { const err = failed(); return err ? { data: null, error: err } : { data: one(), error: null } },
+        then: (res: any, rej: any) => {
+          const err = failed()
+          return Promise.resolve(err ? { data: null, error: err } : { data: patch ? (one(), match()) : match(), error: null }).then(res, rej)
+        },
         update: (p: Row) => { patch = p; return api },
         insert: (row: Row) => {
           inserts.push({ table, row })

@@ -16,6 +16,23 @@ export interface PaymentResult {
 }
 
 /**
+ * Completion flips the row to 'completed' BEFORE applying its effect (credit /
+ * role grant). If the effect fails, put the row back to 'pending' (only if it is
+ * still 'completed') so a later webhook/poll retries instead of seeing
+ * alreadyProcessed forever with nothing applied.
+ */
+async function revertToPending(supabase: any, paymentId: string, tag: string): Promise<void> {
+    const { error: revertError } = await (supabase
+        .from('wallet_payments') as any)
+        .update({ status: 'pending', updated_at: new Date().toISOString() })
+        .eq('id', paymentId)
+        .eq('status', 'completed')
+    if (revertError) {
+        console.error(`${tag} Could not revert payment to pending:`, paymentId, revertError.code)
+    }
+}
+
+/**
  * Processes a completed payment by updating the status, 
  * crediting the wallet, logging the transaction, and notifying the user.
  * This is designed to be idempotent.
@@ -109,14 +126,7 @@ export async function processCompletedWalletPayment(reference: string, providerM
         // The row was flipped to 'completed' before the credit. Put it back to
         // 'pending' so a later webhook/poll retries the credit instead of
         // seeing alreadyProcessed forever with no money credited.
-        const { error: revertError } = await (supabase
-            .from('wallet_payments') as any)
-            .update({ status: 'pending', updated_at: new Date().toISOString() })
-            .eq('id', payment.id)
-            .eq('status', 'completed')
-        if (revertError) {
-            console.error('[PaymentProcess] Could not revert payment to pending:', payment.id, revertError.code)
-        }
+        await revertToPending(supabase, payment.id, '[PaymentProcess]')
         return { success: false, error: 'Failed to credit wallet' }
     }
 
@@ -363,6 +373,7 @@ export async function processCompletedUpgradePayment(reference: string, provider
 
     if (userError || !user) {
         console.error('[UpgradeProcess] User not found:', payment.user_id)
+        await revertToPending(supabase, payment.id, '[UpgradeProcess]')
         return { success: false, error: 'User not found' }
     }
 
@@ -380,6 +391,8 @@ export async function processCompletedUpgradePayment(reference: string, provider
 
     if (updateUserError) {
         console.error('[UpgradeProcess] Update user error:', updateUserError)
+        // Same flag-before-effect revert as the wallet credit: a retry must grant the role.
+        await revertToPending(supabase, payment.id, '[UpgradeProcess]')
         return { success: false, error: 'Failed to update user role' }
     }
 

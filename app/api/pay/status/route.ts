@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { PayError } from '@/lib/pay/errors'
 import { getPaymentState, type Caller } from '@/lib/pay/status'
+import { statusRateLimits } from '@/lib/pay/status-rate-limit'
 
 function json(body: unknown, status = 200, headers: Record<string, string> = {}) {
   return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store', ...headers } })
@@ -18,9 +19,12 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await createRouteClient().auth.getUser()
     const caller: Caller = { userId: user?.id, email }
 
-    const rl = await checkRateLimit(`pay-status:${user?.id ?? getClientIp(request)}`, 60, 60)
-    if (!rl.allowed) {
-      return json({ error: 'Too many requests. Please slow down.' }, 429, { 'Retry-After': String(rl.retryAfterSeconds) })
+    // Guests are keyed by ip + reference (CGNAT-safe) with a looser per-IP ceiling; users by id.
+    for (const bucket of statusRateLimits({ userId: user?.id, ip: getClientIp(request), reference })) {
+      const rl = await checkRateLimit(bucket.key, bucket.max, bucket.windowSeconds)
+      if (!rl.allowed) {
+        return json({ error: 'Too many requests. Please slow down.' }, 429, { 'Retry-After': String(rl.retryAfterSeconds) })
+      }
     }
 
     const result = await getPaymentState(createServerClient() as any, reference, caller)

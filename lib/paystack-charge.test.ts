@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   toPaystackProvider, toLocalPhone, mapChargeStatus, createMomoCharge,
-  submitChargeOtp, verifyTransaction, PaystackChargeError,
+  submitChargeOtp, verifyTransaction, PaystackChargeError, PAYSTACK_TIMEOUT_MS,
 } from './paystack-charge'
 
 function fakeFetch(body: any, ok = true, status = ok ? 200 : 400) {
@@ -106,6 +106,32 @@ describe('PaystackChargeError.definitive', () => {
   it('invalid phone is definitive', async () => {
     const f = fakeFetch({})
     expect((await caught(createMomoCharge({ ...input, phone: '123' }, f.impl))).definitive).toBe(true)
+  })
+  it('timeout (TimeoutError) is NOT definitive and says the provider timed out', async () => {
+    const impl = (async () => { throw new DOMException('The operation was aborted due to timeout', 'TimeoutError') }) as unknown as typeof fetch
+    const e = await caught(createMomoCharge(input, impl))
+    expect(e).toBeInstanceOf(PaystackChargeError)
+    expect(e.definitive).toBe(false)
+    expect(e.message).toBe('Payment provider timed out')
+  })
+  it('abort (AbortError) is NOT definitive and says the provider timed out', async () => {
+    const impl = (async () => { throw new DOMException('This operation was aborted', 'AbortError') }) as unknown as typeof fetch
+    const e = await caught(verifyTransaction('ref1', impl))
+    expect(e.definitive).toBe(false)
+    expect(e.message).toBe('Payment provider timed out')
+  })
+  it('every call carries a timeout signal; a hung fetch is aborted by it', async () => {
+    expect(PAYSTACK_TIMEOUT_MS).toBe(20_000)
+    const f = fakeFetch({ status: true, data: { status: 'pay_offline' } })
+    await createMomoCharge(input, f.impl)
+    expect(f.calls[0].init.signal).toBeInstanceOf(AbortSignal)
+    // A fetch that only settles when its signal aborts: abort it ourselves via the same signal plumbing.
+    const hung = (async (_u: any, init: any) => new Promise((_res, rej) => {
+      init.signal.addEventListener('abort', () => rej(init.signal.reason))
+    })) as unknown as typeof fetch
+    const e = await caught(submitChargeOtp({ reference: 'r', code: '1' }, hung, 5))
+    expect(e.definitive).toBe(false)
+    expect(e.message).toBe('Payment provider timed out')
   })
   it('missing secret key is definitive', async () => {
     delete process.env.PAYSTACK_SECRET_KEY

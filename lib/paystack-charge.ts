@@ -46,16 +46,34 @@ function secret(): string {
   return k
 }
 
-async function call(path: string, init: { method: 'GET' | 'POST'; body?: unknown }, fetchImpl: typeof fetch): Promise<any> {
+/** Server-side cap on any single Paystack request; a timeout is reported as NON-definitive. */
+export const PAYSTACK_TIMEOUT_MS = 20_000
+
+function isAbort(e: unknown): boolean {
+  const name = (e as any)?.name
+  return name === 'TimeoutError' || name === 'AbortError'
+}
+
+async function call(
+  path: string,
+  init: { method: 'GET' | 'POST'; body?: unknown; signal?: AbortSignal },
+  fetchImpl: typeof fetch,
+  timeoutMs: number = PAYSTACK_TIMEOUT_MS,
+): Promise<any> {
+  const timeout = AbortSignal.timeout(timeoutMs)
+  const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout
   let res: Response
   try {
     res = await fetchImpl(BASE + path, {
       method: init.method,
       headers: { Authorization: `Bearer ${secret()}`, 'Content-Type': 'application/json' },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      signal,
     })
   } catch (e) {
     if (e instanceof PaystackChargeError) throw e
+    // We cannot know whether Paystack received the request: never definitive.
+    if (isAbort(e)) throw new PaystackChargeError('Payment provider timed out')
     throw new PaystackChargeError('Could not reach payment provider')
   }
   let json: any = null
@@ -75,6 +93,7 @@ function toResult(json: any): ChargeResult {
 export async function createMomoCharge(
   i: { email: string; amountKobo: number; reference: string; phone: string; network: MomoNetwork },
   fetchImpl: typeof fetch = fetch,
+  timeoutMs: number = PAYSTACK_TIMEOUT_MS,
 ): Promise<ChargeResult> {
   const phone = toLocalPhone(i.phone)
   if (!phone) throw new PaystackChargeError('Invalid Ghana phone number', true)
@@ -87,17 +106,25 @@ export async function createMomoCharge(
       reference: i.reference,
       mobile_money: { phone, provider: toPaystackProvider(i.network) },
     },
-  }, fetchImpl)
+  }, fetchImpl, timeoutMs)
   return toResult(json)
 }
 
-export async function submitChargeOtp(i: { reference: string; code: string }, fetchImpl: typeof fetch = fetch): Promise<ChargeResult> {
-  const json = await call('/charge/submit_otp', { method: 'POST', body: { otp: i.code, reference: i.reference } }, fetchImpl)
+export async function submitChargeOtp(
+  i: { reference: string; code: string },
+  fetchImpl: typeof fetch = fetch,
+  timeoutMs: number = PAYSTACK_TIMEOUT_MS,
+): Promise<ChargeResult> {
+  const json = await call('/charge/submit_otp', { method: 'POST', body: { otp: i.code, reference: i.reference } }, fetchImpl, timeoutMs)
   return toResult(json)
 }
 
-export async function verifyTransaction(reference: string, fetchImpl: typeof fetch = fetch): Promise<{ state: ChargeState; amountKobo?: number; data: any }> {
-  const json = await call(`/transaction/verify/${encodeURIComponent(reference)}`, { method: 'GET' }, fetchImpl)
+export async function verifyTransaction(
+  reference: string,
+  fetchImpl: typeof fetch = fetch,
+  timeoutMs: number = PAYSTACK_TIMEOUT_MS,
+): Promise<{ state: ChargeState; amountKobo?: number; data: any }> {
+  const json = await call(`/transaction/verify/${encodeURIComponent(reference)}`, { method: 'GET' }, fetchImpl, timeoutMs)
   const d = json.data ?? {}
   return { state: mapChargeStatus(d.status), amountKobo: typeof d.amount === 'number' ? d.amount : undefined, data: d }
 }

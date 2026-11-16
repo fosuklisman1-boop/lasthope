@@ -57,6 +57,8 @@ async function main() {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-paystack-signature': signPaystackBody(body, secret) },
     body,
+    // Never let a redirect carry the signed body to another host.
+    redirect: 'manual',
   })
   const text = await res.text()
   let json: unknown = text
