@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { canPay as canPayPhase, isDismissible } from '@/lib/pay/momo-machine'
+import { canPay as canPayPhase, isDismissible, CONFIRMING_MESSAGE } from '@/lib/pay/momo-machine'
 import { useMomoPayment, type MomoNetwork, type MomoPurpose } from './use-momo-payment'
 
 export interface MomoPayDialogProps {
@@ -95,13 +95,20 @@ export function MomoPayDialog(props: MomoPayDialogProps) {
             </div>
             {phase === 'failed' && state.message && <p className="text-sm text-destructive">{state.message}</p>}
             {phase === 'timeout' && (
-              <p className="text-sm text-muted-foreground">
-                Still waiting. If you approved, your balance/order will update shortly
-              </p>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  Still waiting. If you approved, your balance/order will update shortly.
+                </p>
+                <p className="text-sm text-amber-600">
+                  If you already approved a prompt on your phone, wait a minute before trying again.
+                </p>
+              </div>
             )}
             <Button className="w-full" disabled={charging || !phone.trim()} onClick={() => pay(network, phone.trim())}>
               {charging ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Starting payment...</>
+              ) : phase === 'timeout' ? (
+                'Try again'
               ) : (
                 `Pay ${total}`
               )}
@@ -112,8 +119,10 @@ export function MomoPayDialog(props: MomoPayDialogProps) {
         {waiting && (
           <div className="space-y-2 py-2 text-center">
             <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-            <p className="font-medium">Approve the payment prompt on your phone</p>
-            {state.message && <p className="text-sm text-muted-foreground">{state.message}</p>}
+            <p className="font-medium">
+              {state.message === CONFIRMING_MESSAGE ? 'Confirming your payment' : 'Approve the payment prompt on your phone'}
+            </p>
+            {state.message &&<p className="text-sm text-muted-foreground">{state.message}</p>}
             <p className="text-xs text-muted-foreground">Keep this window open until the payment finishes.</p>
           </div>
         )}
@@ -140,7 +149,7 @@ export function MomoPayDialog(props: MomoPayDialogProps) {
         {phase === 'success' && <p className="py-2 text-center font-medium">Payment successful</p>}
         {phase === 'order_failed' && (
           <p className="py-2 text-center text-sm">
-            Your payment was received but we could not complete the order. Please contact support.
+            Payment received and added to your wallet; the order could not be placed. You can use your wallet balance to try again.
           </p>
         )}
       </DialogContent>

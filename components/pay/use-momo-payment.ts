@@ -7,6 +7,7 @@ import {
   canPay,
   isCurrentAttempt,
   reduce,
+  shouldNotify,
   POLL_INTERVAL_MS,
   type MachineState,
   type ServerState,
@@ -124,8 +125,7 @@ export function useMomoPayment(opts: Options) {
 
   // Fire callbacks exactly once per reference.
   useEffect(() => {
-    if (!state.reference) return
-    if (state.phase !== 'success' && state.phase !== 'order_failed') return
+    if (!state.reference || !shouldNotify(state)) return
     const key = `${state.phase}:${state.reference}`
     if (notified.current === key) return
     notified.current = key

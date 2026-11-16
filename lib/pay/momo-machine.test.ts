@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { initialState, reduce, isTerminal, isPolling, canPay, isDismissible, isCurrentAttempt, POLL_INTERVAL_MS, POLL_TIMEOUT_MS, AMBIGUOUS_MESSAGE } from './momo-machine'
+import { initialState, reduce, isTerminal, isPolling, canPay, isDismissible, isCurrentAttempt, POLL_INTERVAL_MS, POLL_TIMEOUT_MS, AMBIGUOUS_MESSAGE, CONFIRMING_MESSAGE, shouldNotify } from './momo-machine'
 
 const charging = () => reduce(initialState, { type: 'PAY' })
 const waiting = () => reduce(charging(), { type: 'CHARGE_OK', reference: 'R1', state: 'pay_offline' })
@@ -93,6 +93,38 @@ describe('momo machine', () => {
     expect(reduce(s, { type: 'OTP_RESULT', state: 'pay_offline' }).phase).toBe('pay_offline')
     expect(reduce(s, { type: 'OTP_ERROR', message: 'Wrong code' }).message).toBe('Wrong code')
     expect(reduce(s, { type: 'OTP_ERROR', message: 'Wrong code' }).phase).toBe('send_otp')
+  })
+  it('CHARGE_OK success is NOT terminal: keeps polling /status, which runs completion', () => {
+    const s = reduce(charging(), { type: 'CHARGE_OK', reference: 'R', state: 'success' })
+    expect(s.phase).toBe('pay_offline')
+    expect(s.reference).toBe('R')
+    expect(s.message).toBe(CONFIRMING_MESSAGE)
+    expect(isTerminal(s)).toBe(false)
+    expect(isPolling(s)).toBe(true)
+    expect(shouldNotify(s)).toBe(false)
+    const done = reduce(s, { type: 'SERVER_STATE', state: 'success' })
+    expect(done.phase).toBe('success')
+    expect(isTerminal(done)).toBe(true)
+    expect(shouldNotify(done)).toBe(true)
+  })
+  it('OTP_RESULT success is NOT terminal: only a following SERVER_STATE success is', () => {
+    const otp = reduce(charging(), { type: 'CHARGE_OK', reference: 'R', state: 'send_otp' })
+    const s = reduce(otp, { type: 'OTP_RESULT', state: 'success' })
+    expect(s.phase).toBe('pay_offline')
+    expect(s.reference).toBe('R')
+    expect(isTerminal(s)).toBe(false)
+    expect(isPolling(s)).toBe(true)
+    expect(shouldNotify(s)).toBe(false)
+    // a pending poll keeps the confirming state
+    expect(reduce(s, { type: 'SERVER_STATE', state: 'pending' })).toBe(s)
+    const done = reduce(s, { type: 'SERVER_STATE', state: 'success' })
+    expect(done.phase).toBe('success')
+    expect(shouldNotify(done)).toBe(true)
+  })
+  it('shouldNotify only for success/order_failed with a reference', () => {
+    expect(shouldNotify(waiting())).toBe(false)
+    expect(shouldNotify(reduce(waiting(), { type: 'SERVER_STATE', state: 'paid_order_failed' }))).toBe(true)
+    expect(shouldNotify(reduce(waiting(), { type: 'SERVER_STATE', state: 'failed' }))).toBe(false)
   })
   it('RESET returns to idle', () => {
     expect(reduce(waiting(), { type: 'RESET' })).toBe(initialState)

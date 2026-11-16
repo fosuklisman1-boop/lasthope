@@ -23,6 +23,9 @@ export const POLL_TIMEOUT_MS = 120000
 export const AMBIGUOUS_MESSAGE =
   'We could not confirm the payment request. If you approve a prompt on your phone it will still be applied.'
 
+/** Shown when /charge or /otp reports Paystack success before /status has run completion. */
+export const CONFIRMING_MESSAGE = 'Payment approved. Confirming your payment...'
+
 export const initialState: MachineState = { phase: 'idle' }
 
 const TERMINAL: Phase[] = ['success', 'failed', 'timeout', 'order_failed']
@@ -40,6 +43,20 @@ export const isCurrentAttempt = (current: number, responseAttempt: number): bool
 
 export const isTerminal = (s: MachineState) => TERMINAL.includes(s.phase)
 export const isPolling = (s: MachineState) => POLLING.includes(s.phase) && !!s.reference
+
+/** onSuccess / onOrderFailed fire only for these states (reached only via /status, which runs completion). */
+export const shouldNotify = (s: MachineState): boolean =>
+  !!s.reference && (s.phase === 'success' || s.phase === 'order_failed')
+
+/**
+ * /charge and /otp return Paystack's raw state WITHOUT running completion, so a 'success'
+ * from them only means "go confirm": keep polling /status (the only path that credits /
+ * upgrades / places the order) instead of going terminal.
+ */
+function fromChargeOrOtp(reference: string | undefined, state: ServerState, s: MachineState): MachineState {
+  if (state === 'success') return { phase: 'pay_offline', reference, message: CONFIRMING_MESSAGE }
+  return fromServer({ ...s, reference }, state)
+}
 
 function fromServer(s: MachineState, state: ServerState, message?: string): MachineState {
   switch (state) {
@@ -64,7 +81,7 @@ export function reduce(s: MachineState, e: MachineEvent): MachineState {
     case 'CHARGE_OK':
       if (s.phase !== 'charging') return s
       if (e.state === 'pending') return { phase: 'pay_offline', reference: e.reference }
-      return fromServer({ phase: 'charging', reference: e.reference }, e.state)
+      return fromChargeOrOtp(e.reference, e.state, { phase: 'charging' })
     case 'CHARGE_ERROR':
       if (s.phase !== 'charging') return s
       if (e.reference) return { phase: 'pay_offline', reference: e.reference, message: AMBIGUOUS_MESSAGE }
@@ -72,7 +89,7 @@ export function reduce(s: MachineState, e: MachineEvent): MachineState {
     case 'SERVER_STATE':
       return POLLING.includes(s.phase) ? fromServer(s, e.state, e.message) : s
     case 'OTP_RESULT':
-      return POLLING.includes(s.phase) ? fromServer({ ...s, phase: 'pay_offline' }, e.state) : s
+      return POLLING.includes(s.phase) ? fromChargeOrOtp(s.reference, e.state, { ...s, phase: 'pay_offline' }) : s
     case 'OTP_ERROR':
       return s.phase === 'send_otp' || s.phase === 'send_voucher' ? { ...s, message: e.message } : s
     case 'TICK':
