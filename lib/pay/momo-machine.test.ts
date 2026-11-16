@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { initialState, reduce, isTerminal, isPolling, POLL_INTERVAL_MS, POLL_TIMEOUT_MS, AMBIGUOUS_MESSAGE } from './momo-machine'
+import { initialState, reduce, isTerminal, isPolling, canPay, isDismissible, isCurrentAttempt, POLL_INTERVAL_MS, POLL_TIMEOUT_MS, AMBIGUOUS_MESSAGE } from './momo-machine'
 
 const charging = () => reduce(initialState, { type: 'PAY' })
 const waiting = () => reduce(charging(), { type: 'CHARGE_OK', reference: 'R1', state: 'pay_offline' })
@@ -96,5 +96,18 @@ describe('momo machine', () => {
   })
   it('RESET returns to idle', () => {
     expect(reduce(waiting(), { type: 'RESET' })).toBe(initialState)
+  })
+
+  it('canPay only from idle/failed/timeout', () => {
+    for (const p of ['idle', 'failed', 'timeout'] as const) expect(canPay(p)).toBe(true)
+    for (const p of ['charging', 'pay_offline', 'send_otp', 'send_voucher', 'success', 'order_failed'] as const) expect(canPay(p)).toBe(false)
+  })
+  it('isDismissible blocks charging/waiting/code entry', () => {
+    for (const p of ['charging', 'pay_offline', 'send_otp', 'send_voucher'] as const) expect(isDismissible(p)).toBe(false)
+    for (const p of ['idle', 'success', 'failed', 'timeout', 'order_failed'] as const) expect(isDismissible(p)).toBe(true)
+  })
+  it('isCurrentAttempt drops stale responses', () => {
+    expect(isCurrentAttempt(3, 3)).toBe(true)
+    expect(isCurrentAttempt(4, 3)).toBe(false)
   })
 })

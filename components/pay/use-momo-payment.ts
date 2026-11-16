@@ -4,6 +4,8 @@ import { useCallback, useEffect, useReducer, useRef } from 'react'
 import {
   initialState,
   isPolling,
+  canPay,
+  isCurrentAttempt,
   reduce,
   POLL_INTERVAL_MS,
   type MachineState,
@@ -32,6 +34,9 @@ export function useMomoPayment(opts: Options) {
   const startedAt = useRef<{ reference: string; at: number } | null>(null)
   const notified = useRef<string | null>(null)
   const alive = useRef(true)
+  const phaseRef = useRef<MachineState['phase']>('idle')
+  const attemptRef = useRef(0)
+  phaseRef.current = state.phase
 
   useEffect(() => {
     alive.current = true
@@ -39,6 +44,9 @@ export function useMomoPayment(opts: Options) {
   }, [])
 
   const pay = useCallback(async (network: MomoNetwork, phone: string) => {
+    if (!canPay(phaseRef.current)) return
+    phaseRef.current = 'charging' // synchronous guard: a second call in the same tick is rejected
+    const attempt = ++attemptRef.current
     dispatch({ type: 'PAY' })
     const { purpose, payload } = optsRef.current
     try {
@@ -48,7 +56,7 @@ export function useMomoPayment(opts: Options) {
         body: JSON.stringify({ ...payload, purpose, network, phone }),
       })
       const data = await readJson(res)
-      if (!alive.current) return
+      if (!alive.current || !isCurrentAttempt(attemptRef.current, attempt)) return
       if (res.ok && typeof data.reference === 'string') {
         dispatch({ type: 'CHARGE_OK', reference: data.reference, state: data.state as ServerState })
       } else {
@@ -59,13 +67,14 @@ export function useMomoPayment(opts: Options) {
         })
       }
     } catch {
-      if (alive.current) dispatch({ type: 'CHARGE_ERROR', message: 'Network error. Please try again.' })
+      if (alive.current && isCurrentAttempt(attemptRef.current, attempt)) dispatch({ type: 'CHARGE_ERROR', message: 'Network error. Please try again.' })
     }
   }, [])
 
   const submitCode = useCallback(async (code: string) => {
     const reference = state.reference
     if (!reference) return
+    const attempt = ++attemptRef.current
     try {
       const res = await fetch('/api/pay/otp', {
         method: 'POST',
@@ -73,11 +82,11 @@ export function useMomoPayment(opts: Options) {
         body: JSON.stringify({ reference, code, email: optsRef.current.guestEmail }),
       })
       const data = await readJson(res)
-      if (!alive.current) return
+      if (!alive.current || !isCurrentAttempt(attemptRef.current, attempt)) return
       if (res.ok && data.state) dispatch({ type: 'OTP_RESULT', state: data.state })
       else dispatch({ type: 'OTP_ERROR', message: typeof data.error === 'string' ? data.error : 'Code was not accepted' })
     } catch {
-      if (alive.current) dispatch({ type: 'OTP_ERROR', message: 'Network error. Please try again.' })
+      if (alive.current && isCurrentAttempt(attemptRef.current, attempt)) dispatch({ type: 'OTP_ERROR', message: 'Network error. Please try again.' })
     }
   }, [state.reference])
 
@@ -124,7 +133,11 @@ export function useMomoPayment(opts: Options) {
     else optsRef.current.onOrderFailed?.(state.reference)
   }, [state.phase, state.reference])
 
-  const reset = useCallback(() => dispatch({ type: 'RESET' }), [])
+  const reset = useCallback(() => {
+    attemptRef.current++ // invalidate any in-flight charge/otp response
+    phaseRef.current = 'idle'
+    dispatch({ type: 'RESET' })
+  }, [])
 
   return { state, pay, submitCode, reset }
 }

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { canPay as canPayPhase, isDismissible } from '@/lib/pay/momo-machine'
 import { useMomoPayment, type MomoNetwork, type MomoPurpose } from './use-momo-payment'
 
 export interface MomoPayDialogProps {
@@ -44,7 +45,7 @@ export function MomoPayDialog(props: MomoPayDialogProps) {
 
   const phase = state.phase
   const charging = phase === 'charging'
-  const canPay = phase === 'idle' || phase === 'failed' || phase === 'timeout'
+  const canPay = canPayPhase(phase)
   const waiting = phase === 'pay_offline'
   const needsCode = phase === 'send_otp' || phase === 'send_voucher'
   const total = `GH₵ ${summary.total.toFixed(2)}`
@@ -57,7 +58,7 @@ export function MomoPayDialog(props: MomoPayDialogProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => { if (next || isDismissible(phase)) onOpenChange(next) }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Pay with Mobile Money</DialogTitle>
@@ -113,6 +114,7 @@ export function MomoPayDialog(props: MomoPayDialogProps) {
             <Loader2 className="mx-auto h-6 w-6 animate-spin" />
             <p className="font-medium">Approve the payment prompt on your phone</p>
             {state.message && <p className="text-sm text-muted-foreground">{state.message}</p>}
+            <p className="text-xs text-muted-foreground">Keep this window open until the payment finishes.</p>
           </div>
         )}
 
@@ -131,6 +133,7 @@ export function MomoPayDialog(props: MomoPayDialogProps) {
             <Button className="w-full" disabled={submitting || !code.trim()} onClick={handleCode}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit code'}
             </Button>
+            <p className="text-xs text-muted-foreground">Keep this window open until the payment finishes.</p>
           </div>
         )}
 

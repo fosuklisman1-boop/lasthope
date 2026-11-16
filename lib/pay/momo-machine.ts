@@ -28,6 +28,16 @@ export const initialState: MachineState = { phase: 'idle' }
 const TERMINAL: Phase[] = ['success', 'failed', 'timeout', 'order_failed']
 const POLLING: Phase[] = ['pay_offline', 'send_otp', 'send_voucher']
 
+/** A new charge may only start from these phases. */
+export const canPay = (phase: Phase): boolean => phase === 'idle' || phase === 'failed' || phase === 'timeout'
+
+/** The dialog may be closed only when no payment is in flight or awaiting approval. */
+export const isDismissible = (phase: Phase): boolean =>
+  phase === 'idle' || phase === 'success' || phase === 'failed' || phase === 'timeout' || phase === 'order_failed'
+
+/** Responses from superseded attempts must be dropped. */
+export const isCurrentAttempt = (current: number, responseAttempt: number): boolean => current === responseAttempt
+
 export const isTerminal = (s: MachineState) => TERMINAL.includes(s.phase)
 export const isPolling = (s: MachineState) => POLLING.includes(s.phase) && !!s.reference
 
@@ -50,7 +60,7 @@ export function reduce(s: MachineState, e: MachineEvent): MachineState {
   switch (e.type) {
     case 'PAY':
       // A new Pay press always starts a fresh attempt; the old reference is abandoned.
-      return s.phase === 'idle' || s.phase === 'failed' || s.phase === 'timeout' ? { phase: 'charging' } : s
+      return canPay(s.phase) ? { phase: 'charging' } : s
     case 'CHARGE_OK':
       if (s.phase !== 'charging') return s
       if (e.state === 'pending') return { phase: 'pay_offline', reference: e.reference }
