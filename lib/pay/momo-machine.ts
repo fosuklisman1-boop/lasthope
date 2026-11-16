@@ -98,3 +98,30 @@ export function reduce(s: MachineState, e: MachineEvent): MachineState {
       return initialState
   }
 }
+
+/** The auto-start dialog fires its charge once per open. */
+export const shouldAutoStart = (open: boolean, alreadyStarted: boolean, hasAutoStart: boolean): boolean =>
+  open && hasAutoStart && !alreadyStarted
+
+export type StepStatus = 'pending' | 'active' | 'done'
+export interface StepStates { sent: StepStatus; approve: StepStatus; confirm: StepStatus }
+
+/** Status of the three processing steps (prompt sent / approve / confirm) for a machine phase. */
+export function stepStates(phase: Phase, message?: string): StepStates {
+  switch (phase) {
+    case 'charging':
+      return { sent: 'active', approve: 'pending', confirm: 'pending' }
+    case 'pay_offline':
+      return message === CONFIRMING_MESSAGE
+        ? { sent: 'done', approve: 'done', confirm: 'active' }
+        : { sent: 'done', approve: 'active', confirm: 'pending' }
+    case 'send_otp':
+    case 'send_voucher':
+      return { sent: 'done', approve: 'active', confirm: 'pending' }
+    case 'success':
+    case 'order_failed':
+      return { sent: 'done', approve: 'done', confirm: 'done' }
+    default: // idle, failed, timeout
+      return { sent: 'pending', approve: 'pending', confirm: 'pending' }
+  }
+}

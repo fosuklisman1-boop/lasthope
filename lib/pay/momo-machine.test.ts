@@ -143,3 +143,36 @@ describe('momo machine', () => {
     expect(isCurrentAttempt(4, 3)).toBe(false)
   })
 })
+
+import { shouldAutoStart, stepStates } from './momo-machine'
+
+describe('shouldAutoStart', () => {
+  it.each([
+    [true, false, true, true],
+    [false, false, true, false], // closed
+    [true, true, true, false], // already started
+    [true, false, false, false], // no autoStart config
+    [false, true, false, false],
+  ])('open=%s started=%s hasAutoStart=%s -> %s', (o, a, h, exp) => expect(shouldAutoStart(o, a, h)).toBe(exp))
+})
+
+describe('stepStates', () => {
+  const P = 'pending', A = 'active', D = 'done'
+  it.each([
+    ['idle', undefined, P, P, P],
+    ['charging', undefined, A, P, P],
+    ['pay_offline', undefined, D, A, P],
+    ['pay_offline', AMBIGUOUS_MESSAGE, D, A, P],
+    ['pay_offline', CONFIRMING_MESSAGE, D, D, A],
+    ['send_otp', undefined, D, A, P],
+    ['send_voucher', undefined, D, A, P],
+    ['success', undefined, D, D, D],
+    ['failed', 'x', P, P, P],
+    ['timeout', undefined, P, P, P],
+  ] as const)('%s / %s', (phase, msg, sent, approve, confirm) => {
+    expect(stepStates(phase, msg)).toEqual({ sent, approve, confirm })
+  })
+  it('order_failed: payment went through, all done', () => {
+    expect(stepStates('order_failed')).toEqual({ sent: D, approve: D, confirm: D })
+  })
+})
