@@ -1,6 +1,9 @@
 import { resolvePrice } from '@/lib/pricing'
 import { loadPricingContext } from '@/lib/pricing-context'
 import { generateReferenceCode } from '@/lib/utils'
+import { normalizeGhanaPhone } from './phone'
+
+export { normalizeGhanaPhone } from './phone'
 
 export interface PlaceOrderInput {
   userId: string
@@ -12,15 +15,6 @@ export interface PlaceOrderInput {
 export type PlaceOrderResult =
   | { ok: true; reference: string; orderId: string; price: number; network: string; size: string; status: string }
   | { ok: false; code: string; message: string; httpStatus: number }
-
-export function normalizeGhanaPhone(raw: string): string | null {
-  if (typeof raw !== 'string') return null
-  const d = raw.replace(/[^\d+]/g, '')
-  let m: RegExpMatchArray | null
-  if ((m = d.match(/^\+?233(\d{9})$/))) return '+233' + m[1]
-  if ((m = d.match(/^0(\d{9})$/))) return '+233' + m[1]
-  return null
-}
 
 export async function placeOrder(input: PlaceOrderInput, supabase: any): Promise<PlaceOrderResult> {
   const { userId, packageId, idempotencyKey, source } = input

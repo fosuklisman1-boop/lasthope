@@ -1,4 +1,6 @@
-import { normalizeGhanaPhone } from './orders'
+import { toLocalPhone } from './phone'
+
+export { toLocalPhone } from './phone'
 
 export type MomoNetwork = 'mtn' | 'telecel' | 'airteltigo'
 export type ChargeState = 'pay_offline' | 'send_otp' | 'send_voucher' | 'success' | 'failed' | 'pending'
@@ -18,11 +20,6 @@ const BASE = 'https://api.paystack.co'
 
 export function toPaystackProvider(n: MomoNetwork): 'mtn' | 'vod' | 'atl' {
   return n === 'telecel' ? 'vod' : n === 'airteltigo' ? 'atl' : 'mtn'
-}
-
-export function toLocalPhone(raw: string): string | null {
-  const n = normalizeGhanaPhone(raw)
-  return n ? '0' + n.slice(4) : null
 }
 
 export function mapChargeStatus(s: string | undefined): ChargeState {
