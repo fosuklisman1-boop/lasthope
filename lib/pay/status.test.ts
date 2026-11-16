@@ -17,7 +17,7 @@ import { PayError } from './errors'
 
 const okOrder = { ok: true, reference: 'R', orderId: 'o1', price: 10, network: 'MTN', size: '1GB', status: 'pending' }
 
-function setup() {
+function setup(creditHook?: (args: any) => any) {
   let balance = 0
   const db = fakeDb({
     wallet_payments: [
@@ -31,8 +31,10 @@ function setup() {
     users: [{ id: 'u1', role: 'user', email: 'a@b.c', first_name: 'A', phone_number: null }],
     roles: [],
   }, (name, args) => {
-    if (name === 'credit_wallet') balance += args.p_amount
-    return { balance }
+    if (name !== 'credit_wallet') return { balance }
+    const hook = creditHook ? creditHook(args) : undefined
+    if (hook === null) return null // rpc failure: nothing credited
+    return Promise.resolve(hook).then(() => { balance += args.p_amount; return { balance } })
   })
   h.sb = db.sb
   h.placeOrder = vi.fn(async () => okOrder)
@@ -181,6 +183,68 @@ describe('getPaymentState', () => {
     const ok = await getPaymentState(db.sb, 'GST-1', guest, { verify: verifyWith('success', kobo) })
     expect(ok.state).toBe('success')
     expect(db.tables.orders[0]).toMatchObject({ payment_status: 'paid', status: 'pending_download' })
+  })
+
+  it('top-up: credit_wallet failure -> pending (not success); the retry credits exactly once', async () => {
+    let failCredit = true
+    const db = setup(() => (failCredit ? null : undefined))
+    const verify = verifyWith('success', 10200)
+    expect((await getPaymentState(db.sb, 'WAL-1', u1, { verify })).state).toBe('pending')
+    expect(db.tables.wallet_payments[0].status).toBe('pending')
+    expect(db.balance()).toBe(0)
+    // still failing: must not flip to success just because the row was touched before
+    expect((await getPaymentState(db.sb, 'WAL-1', u1, { verify })).state).toBe('pending')
+    expect(db.balance()).toBe(0)
+
+    failCredit = false
+    expect((await getPaymentState(db.sb, 'WAL-1', u1, { verify })).state).toBe('success')
+    expect((await getPaymentState(db.sb, 'WAL-1', u1, { verify })).state).toBe('success')
+    expect(db.balance()).toBe(100)
+    expect(db.tables.wallet_transactions.filter((t: any) => t.type === 'credit')).toHaveLength(1)
+  })
+
+  it('direct buy: credit_wallet failure -> pending; retry credits once and places the order once', async () => {
+    let failCredit = true
+    const db = setup(() => (failCredit ? null : undefined))
+    const verify = verifyWith('success', 1020)
+    const first = await getPaymentState(db.sb, 'DBY-1', u1, { verify })
+    expect(first.state).toBe('pending')
+    expect(db.tables.wallet_payments[1].status).toBe('pending')
+    expect(h.placeOrder).not.toHaveBeenCalled()
+
+    failCredit = false
+    expect((await getPaymentState(db.sb, 'DBY-1', u1, { verify })).state).toBe('success')
+    expect(db.balance()).toBe(10)
+    expect(h.placeOrder).toHaveBeenCalledTimes(1)
+  })
+
+  it('direct buy: alreadyProcessed with no credit transaction -> pending, no order', async () => {
+    const db = setup()
+    db.tables.wallet_payments[1].status = 'completed'
+    const r = await getPaymentState(db.sb, 'DBY-1', u1, { verify: verifyWith('success', 1020) })
+    expect(r.state).toBe('pending')
+    expect(h.placeOrder).not.toHaveBeenCalled()
+    expect(db.balance()).toBe(0)
+  })
+
+  it('direct buy interleaving: poll during the webhook credit -> pending, never paid_order_failed', async () => {
+    let release!: () => void
+    let entered!: () => void
+    const inCredit = new Promise<void>(r => { entered = r })
+    const db = setup(() => { entered(); return new Promise<void>(r => { release = r }) })
+    // what a real placeOrder would see: insufficient funds until the credit lands
+    h.placeOrder = vi.fn(async () => (db.balance() >= 10 ? okOrder : { ok: false, code: 'insufficient_funds', message: 'x', httpStatus: 402 }))
+    const verify = verifyWith('success', 1020)
+
+    const webhook = getPaymentState(db.sb, 'DBY-1', u1, { verify })
+    await inCredit
+    const poll = await getPaymentState(db.sb, 'DBY-1', u1, { verify })
+    expect(poll.state).toBe('pending')
+
+    release()
+    expect((await webhook).state).toBe('success')
+    expect(credits(db.rpcCalls)).toHaveLength(1)
+    expect(h.placeOrder).toHaveBeenCalledTimes(1)
   })
 
   it('verify passes the reference through', async () => {

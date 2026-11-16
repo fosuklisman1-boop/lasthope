@@ -71,7 +71,7 @@ export async function getPaymentState(
   }
   const providerData = { ...(v.data ?? {}), amount: v.amountKobo }
 
-  let result: { success: boolean; error?: string; orderFailed?: boolean }
+  let result: { success: boolean; error?: string; orderFailed?: boolean; pending?: boolean }
   switch (purposeFromReference(reference, metadata)) {
     case 'storefront': result = await processCompletedShopOrder(reference, providerData); break
     case 'direct_buy': result = await processCompletedDirectBuy(reference, providerData, sb); break
@@ -84,6 +84,8 @@ export async function getPaymentState(
     console.error(`[pay/status] completion failed for ${reference}: ${result.error}`)
     return { state: 'pending', message: 'Payment received, finishing up.' }
   }
+  // Paid, but the wallet credit has not been confirmed yet: keep polling.
+  if (result.pending) return { state: 'pending', message: 'Payment received, finishing up.' }
   if (result.orderFailed) {
     return { state: 'paid_order_failed', message: 'Payment received and added to your wallet, but the order could not be placed.' }
   }

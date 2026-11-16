@@ -26,6 +26,7 @@ export function fakeDb(tables: Record<string, Row[]>, rpcImpl?: (name: string, a
       }
       const api: any = {
         select: () => api,
+        limit: () => api,
         eq: (c: string, v: any) => { filters.push([c, v]); return api },
         single: async () => { const r = one(); return { data: r, error: r ? null : { code: 'PGRST116' } } },
         maybeSingle: async () => ({ data: one(), error: null }),
@@ -43,8 +44,10 @@ export function fakeDb(tables: Record<string, Row[]>, rpcImpl?: (name: string, a
     },
     rpc(name: string, args: any) {
       rpcCalls.push({ name, args })
-      const data = rpcImpl ? rpcImpl(name, args) : { balance: 0 }
-      const r: any = { single: async () => ({ data, error: null }), then: (res: any, rej: any) => Promise.resolve({ data, error: null }).then(res, rej) }
+      // rpcImpl may return a promise (to hold a call mid-flight) or null (rpc failure).
+      const result = Promise.resolve(rpcImpl ? rpcImpl(name, args) : { balance: 0 })
+        .then(data => (data == null ? { data: null, error: { code: 'XX000', message: 'rpc failed' } } : { data, error: null }))
+      const r: any = { single: () => result, then: (res: any, rej: any) => result.then(res, rej) }
       return r
     },
   }

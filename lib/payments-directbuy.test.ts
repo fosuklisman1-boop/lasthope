@@ -13,7 +13,7 @@ vi.mock('./orders', async (orig) => ({ ...(await orig<any>()), placeOrder: (...a
 
 import { processCompletedDirectBuy } from './payments'
 
-function setup(placeOrderImpl: (input: any) => any) {
+function setup(placeOrderImpl: (input: any) => any, creditHook?: (args: any) => any) {
   let balance = 0
   const db = fakeDb({
     wallet_payments: [{
@@ -23,8 +23,12 @@ function setup(placeOrderImpl: (input: any) => any) {
     users: [{ id: 'u1', email: 'a@b.c', first_name: 'A', phone_number: null }],
     orders: [],
   }, (name, args) => {
-    if (name === 'credit_wallet') balance += args.p_amount
-    return { balance }
+    if (name !== 'credit_wallet') return { balance }
+    // creditHook may return null (rpc fails, nothing credited) or a promise
+    // that holds the credit mid-flight; the balance moves only when it resolves.
+    const hook = creditHook ? creditHook(args) : undefined
+    if (hook === null) return null
+    return Promise.resolve(hook).then(() => { balance += args.p_amount; return { balance } })
   })
   h.sb = db.sb
   h.placeOrder = vi.fn(async (input: any) => placeOrderImpl(input))
@@ -32,6 +36,68 @@ function setup(placeOrderImpl: (input: any) => any) {
 }
 
 const credits = (calls: { name: string; args: any }[]) => calls.filter(c => c.name === 'credit_wallet')
+const OK_ORDER = { ok: true, reference: 'R', orderId: 'o1', price: 10, network: 'MTN', size: '1GB', status: 'pending' }
+
+describe('processCompletedDirectBuy: credit-before-complete gate', () => {
+  beforeEach(() => { h.sb = null; h.placeOrder = null })
+
+  it('credit_wallet failure reverts the row to pending; a retry credits once and orders once', async () => {
+    let failCredit = true
+    const db = setup(() => OK_ORDER, () => (failCredit ? null : undefined))
+    const first = await processCompletedDirectBuy('DBY-1', { amount: 1020 }, db.sb)
+    expect(first).toMatchObject({ success: false, error: 'Failed to credit wallet' })
+    expect(db.tables.wallet_payments[0].status).toBe('pending')
+    expect(h.placeOrder).not.toHaveBeenCalled()
+
+    failCredit = false
+    const second = await processCompletedDirectBuy('DBY-1', { amount: 1020 }, db.sb)
+    expect(second.success).toBe(true)
+    expect(second.pending).toBeFalsy()
+    expect(db.balance()).toBe(10)
+    expect(credits(db.rpcCalls)).toHaveLength(2) // one failed attempt, one that landed
+    expect(h.placeOrder).toHaveBeenCalledTimes(1)
+  })
+
+  it('alreadyProcessed without a credit transaction -> pending, no order, balance unchanged', async () => {
+    const db = setup(() => OK_ORDER)
+    db.tables.wallet_payments[0].status = 'completed' // flipped, but the credit never landed
+    const r = await processCompletedDirectBuy('DBY-1', { amount: 1020 }, db.sb)
+    expect(r).toMatchObject({ success: true, pending: true })
+    expect(r.orderFailed).toBeFalsy()
+    expect(h.placeOrder).not.toHaveBeenCalled()
+    expect(credits(db.rpcCalls)).toHaveLength(0)
+    expect(db.balance()).toBe(0)
+  })
+
+  it('interleaving: the loser runs before the winner credit lands -> pending; winner then orders once', async () => {
+    let release!: () => void
+    let entered!: () => void
+    const inCredit = new Promise<void>(r => { entered = r })
+    const db = setup((input) => {
+      // place a real keyed order so "exactly one order" is observable
+      db.tables.orders.push({ id: `o${db.tables.orders.length + 1}`, user_id: input.userId, idempotency_key: input.idempotencyKey })
+      return OK_ORDER
+    }, () => { entered(); return new Promise<void>(r => { release = r }) })
+
+    const winner = processCompletedDirectBuy('DBY-1', { amount: 1020 }, db.sb)
+    await inCredit // winner has flipped the row and is inside credit_wallet
+
+    const loser = await processCompletedDirectBuy('DBY-1', { amount: 1020 }, db.sb)
+    expect(loser).toMatchObject({ success: true, pending: true })
+    expect(loser.orderFailed).toBeFalsy()
+    expect(h.placeOrder).not.toHaveBeenCalled()
+
+    release()
+    const w = await winner
+    expect(w.success).toBe(true)
+    expect(w.orderFailed).toBeFalsy()
+    expect(w.pending).toBeFalsy()
+    expect(credits(db.rpcCalls)).toHaveLength(1)
+    expect(db.balance()).toBe(10)
+    expect(h.placeOrder).toHaveBeenCalledTimes(1)
+    expect(db.tables.orders).toHaveLength(1)
+  })
+})
 
 describe('processCompletedDirectBuy', () => {
   beforeEach(() => { h.sb = null; h.placeOrder = null })

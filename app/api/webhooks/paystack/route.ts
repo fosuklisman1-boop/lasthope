@@ -82,6 +82,8 @@ export async function POST(request: NextRequest) {
 
                 if (!result.success) {
                     console.error('[PaystackWebhook] processCompletedDirectBuy FAILED:', result.error)
+                } else if (result.pending) {
+                    console.log('[PaystackWebhook] processCompletedDirectBuy pending (credit not yet recorded):', reference)
                 } else if (result.orderFailed) {
                     console.error('[PaystackWebhook] processCompletedDirectBuy paid but order not placed:', reference)
                 } else {

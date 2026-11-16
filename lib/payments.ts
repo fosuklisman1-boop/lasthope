@@ -106,6 +106,17 @@ export async function processCompletedWalletPayment(reference: string, providerM
 
     if (walletError || !wallet) {
         console.error('[PaymentProcess] Credit wallet error:', payment.wallet_id, walletError)
+        // The row was flipped to 'completed' before the credit. Put it back to
+        // 'pending' so a later webhook/poll retries the credit instead of
+        // seeing alreadyProcessed forever with no money credited.
+        const { error: revertError } = await (supabase
+            .from('wallet_payments') as any)
+            .update({ status: 'pending', updated_at: new Date().toISOString() })
+            .eq('id', payment.id)
+            .eq('status', 'completed')
+        if (revertError) {
+            console.error('[PaymentProcess] Could not revert payment to pending:', payment.id, revertError.code)
+        }
         return { success: false, error: 'Failed to credit wallet' }
     }
 
@@ -195,13 +206,13 @@ export async function processCompletedDirectBuy(
     reference: string,
     providerMetadata: any,
     sb?: any,
-): Promise<PaymentResult & { orderFailed?: boolean }> {
+): Promise<PaymentResult & { orderFailed?: boolean; pending?: boolean }> {
     const supabase = sb ?? createServerClient()
 
     const credit = await processCompletedWalletPayment(reference, providerMetadata)
     if (!credit.success) return credit
 
-    // Only buy against a payment that is actually completed (credited). An
+    // Only buy against a payment that is actually completed. An
     // `alreadyProcessed` result can also mean the row is failed/cancelled;
     // placing an order then would spend wallet money that was never paid in.
     const { data: payment } = await supabase
@@ -213,6 +224,25 @@ export async function processCompletedDirectBuy(
     if (!payment || payment.status !== 'completed') {
         console.error(`[DirectBuy] Payment ${reference} is not completed; not placing order`)
         return { success: false, error: 'Payment not completed' }
+    }
+
+    // processCompletedWalletPayment flips the row to 'completed' BEFORE it
+    // credits, so `alreadyProcessed` does not prove the money landed: another
+    // call may still be between the flip and credit_wallet. Require the credit
+    // transaction row (written right after a successful credit) before
+    // spending the wallet; otherwise report a non-terminal pending.
+    if (credit.alreadyProcessed) {
+        const { data: creditTxns } = await supabase
+            .from('wallet_transactions')
+            .select('id')
+            .eq('user_id', payment.user_id)
+            .eq('reference', reference)
+            .eq('type', 'credit')
+            .limit(1)
+        if (!Array.isArray(creditTxns) || creditTxns.length === 0) {
+            console.log(`[DirectBuy] Credit not yet recorded for ${reference}; not placing order yet`)
+            return { success: true, pending: true, alreadyProcessed: true }
+        }
     }
 
     const meta = (payment.metadata ?? {}) as any
