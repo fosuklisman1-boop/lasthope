@@ -5,19 +5,16 @@ import {
   processCompletedShopOrder,
   processCompletedDirectBuy,
 } from '@/lib/payments'
-import { PayError, type PayPurpose } from './errors'
+import { PayError } from './errors'
+import { purposeFromReference } from './purpose'
+
+export { purposeFromReference }
 
 export type PayState = ChargeState | 'paid_order_failed'
 export interface Caller { userId?: string; email?: string }
 
 const NOT_FOUND = 'Payment not found'
 
-export function purposeFromReference(ref: string, metadata?: any): PayPurpose {
-  if (ref.startsWith('GST-')) return 'storefront'
-  if (ref.startsWith('DBY-')) return 'direct_buy'
-  if (ref.startsWith('upgrade_') || ref.startsWith('agent_upgrade_') || metadata?.target_role) return 'upgrade'
-  return 'topup'
-}
 
 /** Loads the payment record for `reference` and checks the caller owns it. Unknown and unowned both throw the same 404. */
 async function loadOwned(sb: any, reference: string, caller: Caller): Promise<{ metadata?: any }> {
