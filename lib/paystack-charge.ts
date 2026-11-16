@@ -5,8 +5,11 @@ export type ChargeState = 'pay_offline' | 'send_otp' | 'send_voucher' | 'success
 export interface ChargeResult { state: ChargeState; message?: string; raw: any }
 
 export class PaystackChargeError extends Error {
-  constructor(message: string) {
+  /** True only when we know the charge was not created (explicit provider rejection or never sent). */
+  readonly definitive: boolean
+  constructor(message: string, definitive = false) {
     super(message)
+    this.definitive = definitive
     this.name = 'PaystackChargeError'
   }
 }
@@ -39,7 +42,7 @@ export function mapChargeStatus(s: string | undefined): ChargeState {
 
 function secret(): string {
   const k = process.env.PAYSTACK_SECRET_KEY
-  if (!k) throw new PaystackChargeError('Payment provider is not configured')
+  if (!k) throw new PaystackChargeError('Payment provider is not configured', true)
   return k
 }
 
@@ -58,7 +61,8 @@ async function call(path: string, init: { method: 'GET' | 'POST'; body?: unknown
   let json: any = null
   try { json = await res.json() } catch { /* ignore */ }
   if (!res.ok || !json || json.status !== true) {
-    throw new PaystackChargeError(json?.message || 'Payment provider error')
+    const rejected = !!json && json.status === false && res.status >= 400 && res.status < 500
+    throw new PaystackChargeError(json?.message || 'Payment provider error', rejected)
   }
   return json
 }
@@ -73,7 +77,7 @@ export async function createMomoCharge(
   fetchImpl: typeof fetch = fetch,
 ): Promise<ChargeResult> {
   const phone = toLocalPhone(i.phone)
-  if (!phone) throw new PaystackChargeError('Invalid Ghana phone number')
+  if (!phone) throw new PaystackChargeError('Invalid Ghana phone number', true)
   const json = await call('/charge', {
     method: 'POST',
     body: {

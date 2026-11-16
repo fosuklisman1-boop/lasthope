@@ -4,11 +4,11 @@ import {
   submitChargeOtp, verifyTransaction, PaystackChargeError,
 } from './paystack-charge'
 
-function fakeFetch(body: any, ok = true) {
+function fakeFetch(body: any, ok = true, status = ok ? 200 : 400) {
   const calls: { url: string; init: any }[] = []
   const impl = (async (url: any, init: any) => {
     calls.push({ url: String(url), init })
-    return { ok, json: async () => body } as any
+    return { ok, status, json: async () => body } as any
   }) as unknown as typeof fetch
   return { impl, calls }
 }
@@ -80,5 +80,36 @@ describe('verifyTransaction', () => {
     expect(f.calls[0].url).toBe('https://api.paystack.co/transaction/verify/ref1')
     expect(r.state).toBe('success')
     expect(r.amountKobo).toBe(2039)
+  })
+})
+
+describe('PaystackChargeError.definitive', () => {
+  const input = { email: 'a@b.com', amountKobo: 2039, reference: 'ref1', phone: '0551234987', network: 'mtn' as const }
+  const caught = async (p: Promise<unknown>) => { try { await p } catch (e) { return e as PaystackChargeError } throw new Error('did not throw') }
+
+  it('network failure is not definitive', async () => {
+    const impl = (async () => { throw new Error('ECONNRESET') }) as unknown as typeof fetch
+    expect((await caught(createMomoCharge(input, impl))).definitive).toBe(false)
+  })
+  it('5xx is not definitive', async () => {
+    const f = fakeFetch({ status: false, message: 'oops' }, false, 503)
+    expect((await caught(createMomoCharge(input, f.impl))).definitive).toBe(false)
+  })
+  it('unparseable body is not definitive', async () => {
+    const impl = (async () => ({ ok: false, status: 400, json: async () => { throw new Error('bad json') } })) as unknown as typeof fetch
+    expect((await caught(createMomoCharge(input, impl))).definitive).toBe(false)
+  })
+  it('explicit rejection on 4xx is definitive', async () => {
+    const f = fakeFetch({ status: false, message: 'Declined' }, false, 400)
+    expect((await caught(createMomoCharge(input, f.impl))).definitive).toBe(true)
+  })
+  it('invalid phone is definitive', async () => {
+    const f = fakeFetch({})
+    expect((await caught(createMomoCharge({ ...input, phone: '123' }, f.impl))).definitive).toBe(true)
+  })
+  it('missing secret key is definitive', async () => {
+    delete process.env.PAYSTACK_SECRET_KEY
+    const f = fakeFetch({})
+    expect((await caught(createMomoCharge(input, f.impl))).definitive).toBe(true)
   })
 })

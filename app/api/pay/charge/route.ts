@@ -5,6 +5,7 @@ import { createServerClient } from '@/lib/supabase'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { createMomoCharge, toLocalPhone, PaystackChargeError, type MomoNetwork } from '@/lib/paystack-charge'
 import { PayError } from '@/lib/pay/errors'
+import { shouldMarkFailed } from '@/lib/pay/charge-failure'
 import { prepareTopup, prepareUpgrade, prepareDirectBuy, markPaymentFailed, type PreparedPayment } from '@/lib/pay/prepare-wallet'
 import { prepareStorefront, markOrderFailed } from '@/lib/pay/prepare-storefront'
 
@@ -89,13 +90,16 @@ export async function POST(request: NextRequest) {
       })
       return json({ reference: prepared.reference, state: charge.state })
     } catch (e) {
-      try {
-        if (purpose === 'storefront') await markOrderFailed(sb, prepared.reference)
-        else await markPaymentFailed(sb, prepared.reference)
-      } catch {
-        console.error('[pay/charge] could not mark attempt failed')
+      if (shouldMarkFailed(e)) {
+        try {
+          if (purpose === 'storefront') await markOrderFailed(sb, prepared.reference)
+          else await markPaymentFailed(sb, prepared.reference)
+        } catch {
+          console.error('[pay/charge] could not mark attempt failed')
+        }
       }
-      if (e instanceof PaystackChargeError) return json({ error: e.message }, 502)
+      // Ambiguous errors leave the row pending; the client keeps polling status for this reference.
+      if (e instanceof PaystackChargeError) return json({ error: e.message, reference: prepared.reference }, 502)
       throw e
     }
   } catch (error) {
