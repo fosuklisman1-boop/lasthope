@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx'
 import { useAuth } from '@/contexts/auth-context'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { formatCurrency, getNetworkGradient, cn } from '@/lib/utils'
+import { formatCurrency, getNetworkGradient, cn, calculatePaystackFee } from '@/lib/utils'
 import { usePackagePrices } from '@/hooks/use-package-prices'
 import { isResellerRole } from '@/lib/roles'
 import { validateGhanaianPhone, detectNetwork } from '@/lib/phone-validation'
@@ -50,6 +50,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Trash2, Upload } from 'lucide-react'
 import { useTutorial } from '@/hooks/useTutorial'
 import { HelpButton } from '@/components/tutorial/HelpButton'
+import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
 
 interface ValidationResult {
     lineNumber: number
@@ -91,6 +92,8 @@ export default function DataPackagesPage() {
     const [isPurchasing, setIsPurchasing] = useState(false)
     const [purchaseSuccess, setPurchaseSuccess] = useState(false)
     const [idempotencyKey, setIdempotencyKey] = useState('')
+    const [payOpen, setPayOpen] = useState(false)
+    const [paystackFeePercent, setPaystackFeePercent] = useState(1.95)
 
     // Bulk Order State
     const [bulkInputType, setBulkInputType] = useState<'text' | 'excel' | null>(null)
@@ -110,6 +113,7 @@ export default function DataPackagesPage() {
         fetchPackages()
         fetchWalletBalance()
         fetchOrdersToday()
+        fetchFeePercent()
     }, [dbUser])
 
     useEffect(() => {
@@ -151,6 +155,20 @@ export default function DataPackagesPage() {
             .single()
 
         setWalletBalance((data as any)?.balance || 0)
+    }
+
+    // Fee percent loaded the same way the wallet page does; used for the display-only preview.
+    const fetchFeePercent = async () => {
+        const { data } = await supabase
+            .from('admin_settings')
+            .select('value')
+            .eq('key', 'paystack_fee_percent')
+            .single()
+        const val = (data as any)?.value
+        if (val) {
+            const parsed = typeof val === 'string' ? parseFloat(val) : (typeof val === 'number' ? val : 1.95)
+            if (!isNaN(parsed)) setPaystackFeePercent(parsed)
+        }
     }
 
     const fetchOrdersToday = async () => {
@@ -225,6 +243,17 @@ export default function DataPackagesPage() {
                 }
             }
         }
+    }
+
+    // Open the MoMo direct-charge dialog after the same phone validation the wallet purchase uses.
+    const handlePayNow = () => {
+        if (!selectedPackage || !dbUser) return
+        const validation = validateGhanaianPhone(phoneNumber)
+        if (!validation.isValid) {
+            setPhoneError(validation.error || 'Invalid phone number')
+            return
+        }
+        setPayOpen(true)
     }
 
     const handlePurchase = async () => {
@@ -1074,7 +1103,7 @@ export default function DataPackagesPage() {
             </Tabs>
 
             {/* Purchase Dialog */}
-            <Dialog open={!!selectedPackage} onOpenChange={() => setSelectedPackage(null)}>
+            <Dialog open={!!selectedPackage && !payOpen} onOpenChange={() => setSelectedPackage(null)}>
                 <DialogContent className="w-[95%] max-w-sm sm:max-w-md rounded-2xl p-4 sm:p-6">
                     {purchaseSuccess ? (
                         <div className="text-center py-6">
@@ -1150,9 +1179,16 @@ export default function DataPackagesPage() {
                                 </div>
                             </div>
 
-                            <DialogFooter>
+                            <DialogFooter className="gap-2 sm:gap-0">
                                 <Button variant="outline" onClick={() => setSelectedPackage(null)}>
                                     Cancel
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    onClick={handlePayNow}
+                                    disabled={isPurchasing || !phoneNumber || !!phoneError}
+                                >
+                                    Pay now with MoMo
                                 </Button>
                                 <Button
                                     onClick={handlePurchase}
@@ -1172,6 +1208,38 @@ export default function DataPackagesPage() {
                     )}
                 </DialogContent>
             </Dialog>
+
+            <MomoPayDialog
+                open={payOpen}
+                onOpenChange={setPayOpen}
+                purpose="direct_buy"
+                payload={{
+                    packageId: selectedPackage?.id,
+                    phoneNumber: validateGhanaianPhone(phoneNumber).normalizedNumber || phoneNumber,
+                }}
+                defaultPhone={phoneNumber}
+                // Display only: the final amount (price for the role + fee) is computed on the
+                // server and shown on the phone prompt.
+                summary={{
+                    label: selectedPackage ? `${selectedPackage.network} ${selectedPackage.size}` : 'Data bundle',
+                    total: selectedPackage
+                        ? getEffectivePrice(selectedPackage) + calculatePaystackFee(getEffectivePrice(selectedPackage), paystackFeePercent)
+                        : 0,
+                }}
+                onSuccess={() => {
+                    setPayOpen(false)
+                    setSelectedPackage(null)
+                    toast.success('Order placed successfully!')
+                    fetchWalletBalance()
+                    fetchOrdersToday()
+                }}
+                onOrderFailed={() => {
+                    setPayOpen(false)
+                    setSelectedPackage(null)
+                    toast.error('Payment received and added to your wallet; order could not be placed')
+                    fetchWalletBalance()
+                }}
+            />
         </div>
     )
 }
