@@ -29,6 +29,7 @@ import {
 import Link from 'next/link'
 import { toast } from 'sonner'
 import Image from 'next/image'
+import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
 
 const NETWORKS = ['MTN', 'Telecel', 'AT-iShare', 'AT-BigTime'] as const
 
@@ -44,6 +45,7 @@ function GuestPurchaseContent() {
     const [phoneNumber, setPhoneNumber] = useState('')
     const [email, setEmail] = useState('')
     const [isProcessing, setIsProcessing] = useState(false)
+    const [payOpen, setPayOpen] = useState(false)
     const [phoneError, setPhoneError] = useState('')
 
     // Tracking state
@@ -124,7 +126,7 @@ function GuestPurchaseContent() {
 
     const filteredPackages = packages.filter(pkg => pkg.network === selectedNetwork)
 
-    const handleInitializePurchase = async () => {
+    const handleInitializePurchase = () => {
         if (!selectedPackage) {
             toast.error('Please select a package')
             return
@@ -149,29 +151,8 @@ function GuestPurchaseContent() {
             return
         }
 
-        setIsProcessing(true)
-        try {
-            const response = await fetch('/api/guest/purchase/initialize', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    packageId: selectedPackage.id,
-                    phoneNumber: phoneValidation.normalizedNumber,
-                    email: email,
-                    network: selectedPackage.network
-                })
-            })
-
-            const data = await response.json()
-            if (!response.ok) throw new Error(data.error || 'Failed to initialize purchase')
-
-            if (data.authorization_url) {
-                window.location.href = data.authorization_url
-            }
-        } catch (error: any) {
-            toast.error(error.message)
-            setIsProcessing(false)
-        }
+        // Direct mobile-money charge: the pay dialog drives the charge instead of a Paystack redirect.
+        setPayOpen(true)
     }
 
     const getStatusIcon = (status: string) => {
@@ -301,7 +282,7 @@ function GuestPurchaseContent() {
 
                             {/* Checkout: one modal on phone, tablet and laptop */}
                             <Dialog
-                                open={!!selectedPackage}
+                                open={!!selectedPackage && !payOpen}
                                 onOpenChange={(open) => {
                                     if (!open && !isProcessing) {
                                         setSelectedPackage(null)
@@ -397,6 +378,27 @@ function GuestPurchaseContent() {
                                     )}
                                 </DialogContent>
                             </Dialog>
+
+                            {selectedPackage && (
+                                <MomoPayDialog
+                                    open={payOpen}
+                                    onOpenChange={setPayOpen}
+                                    purpose="storefront"
+                                    payload={{
+                                        packageId: selectedPackage.id,
+                                        phoneNumber: validateGhanaianPhone(phoneNumber).normalizedNumber,
+                                        email,
+                                    }}
+                                    // Display only: the server recomputes the real amount.
+                                    summary={{ label: `${selectedPackage.network} ${selectedPackage.size}`, total: selectedPackage.price }}
+                                    guestEmail={email}
+                                    defaultPhone={phoneNumber}
+                                    onSuccess={(reference) => {
+                                        setPayOpen(false)
+                                        router.push(`/s/order/${reference}?success=true`)
+                                    }}
+                                />
+                            )}
                         </div>
                     </TabsContent>
 

@@ -11,6 +11,7 @@ import CongratsModal from '@/components/upgrade/CongratsModal'
 import { cn } from '@/lib/utils'
 import { useTutorial } from '@/hooks/useTutorial'
 import { HelpButton } from '@/components/tutorial/HelpButton'
+import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
 
 // Per-tier card styling. The four built-in tiers have their own look; any other role
 // an admin adds gets this neutral card, with its badge in the role's colour.
@@ -84,6 +85,7 @@ export default function UpgradePage() {
     const [prices, setPrices] = useState<Record<string, number>>({})
     const [isLoading, setIsLoading] = useState(true)
     const [isProcessing, setIsProcessing] = useState<string | null>(null)
+    const [payTier, setPayTier] = useState<string | null>(null)
 
     // Roles an admin has switched on for purchase, cheapest first
     const [tiers, setTiers] = useState<string[]>([])
@@ -163,26 +165,9 @@ export default function UpgradePage() {
         }
     }, [isVerifying])
 
-    async function startUpgrade(tier: string) {
-        setIsProcessing(tier)
-        try {
-            const res = await fetch('/api/user/upgrade/initialize', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tier }),
-            })
-            const data = await res.json()
-            if (data.authorization_url) {
-                window.location.href = data.authorization_url
-            } else {
-                toast.error(data.error || 'Failed to start upgrade process')
-                setIsProcessing(null)
-            }
-        } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Failed to start upgrade process'
-            toast.error(message)
-            setIsProcessing(null)
-        }
+    function startUpgrade(tier: string) {
+        // Opens the mobile-money dialog; the server prices the tier itself.
+        setPayTier(tier)
     }
 
     if (isLoading || isVerifying) {
@@ -368,6 +353,23 @@ export default function UpgradePage() {
                     </div>
                 </div>
             </div>
+
+            <MomoPayDialog
+                open={payTier !== null}
+                onOpenChange={(o) => { if (!o) setPayTier(null) }}
+                purpose="upgrade"
+                payload={{ tier: payTier }}
+                summary={{
+                    label: payTier ? `Upgrade to ${getRoleConfig(payTier).label}` : 'Upgrade',
+                    total: payTier ? (prices[payTier] ?? 0) : 0,
+                }}
+                onSuccess={async () => {
+                    setPayTier(null)
+                    // Same outcome as the old ?success=true flow: reload the user's role, then celebrate.
+                    await refreshUser()
+                    setShowCongrats(true)
+                }}
+            />
         </>
     )
 }

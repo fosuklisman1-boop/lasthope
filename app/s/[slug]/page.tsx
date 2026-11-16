@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency, getNetworkColor, getNetworkGradient } from '@/lib/utils'
+import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
 
 interface Shop {
     id: string
@@ -54,6 +55,7 @@ export default function StorefrontPage() {
     const [phoneNumber, setPhoneNumber] = useState('')
     const [email, setEmail] = useState('')
     const [isProcessing, setIsProcessing] = useState(false)
+    const [payOpen, setPayOpen] = useState(false)
 
     useEffect(() => {
         if (params.slug) {
@@ -85,36 +87,11 @@ export default function StorefrontPage() {
         }
     }
 
-    const handlePurchase = async (e: React.FormEvent) => {
+    const handlePurchase = (e: React.FormEvent) => {
         e.preventDefault()
         if (!selectedPkg || !phoneNumber || !email) return
-        
-        setIsProcessing(true)
-        try {
-            const res = await fetch('/api/guest/purchase/initialize', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    packageId: selectedPkg.id,
-                    phoneNumber,
-                    email,
-                    shopId: shop?.id
-                })
-            })
-            
-            const data = await res.json()
-            if (data.error) throw new Error(data.error)
-            
-            if (data.authorization_url) {
-                window.location.href = data.authorization_url
-            } else {
-                toast.success('Order initialized! Check your email for payment link.')
-            }
-        } catch (error: any) {
-            toast.error(error.message)
-        } finally {
-            setIsProcessing(false)
-        }
+        // Direct mobile-money charge: the pay dialog drives the charge instead of a Paystack redirect.
+        setPayOpen(true)
     }
 
     if (isLoading) {
@@ -238,7 +215,7 @@ export default function StorefrontPage() {
             </div>
 
             {/* Checkout: one modal on phone, tablet and laptop */}
-            <Dialog open={!!selectedPkg} onOpenChange={(open) => { if (!open && !isProcessing) setSelectedPkg(null) }}>
+            <Dialog open={!!selectedPkg && !payOpen} onOpenChange={(open) => { if (!open && !isProcessing) setSelectedPkg(null) }}>
                 <DialogContent className="w-[calc(100%-1.5rem)] max-w-md max-h-[92vh] overflow-y-auto rounded-[1.75rem] border-t-4 border-t-primary p-5 sm:p-6">
                     <DialogHeader className="space-y-1.5 text-left">
                         <DialogTitle className="flex items-center gap-2 !text-left">
@@ -304,6 +281,23 @@ export default function StorefrontPage() {
                     )}
                 </DialogContent>
             </Dialog>
+
+            {selectedPkg && (
+                <MomoPayDialog
+                    open={payOpen}
+                    onOpenChange={setPayOpen}
+                    purpose="storefront"
+                    payload={{ packageId: selectedPkg.id, phoneNumber, email, shopId: shop.id }}
+                    // Display only: the server recomputes the real amount from the package and shop.
+                    summary={{ label: `${selectedPkg.network} ${selectedPkg.size}`, total: selectedPkg.shop_price }}
+                    guestEmail={email}
+                    defaultPhone={phoneNumber}
+                    onSuccess={(reference) => {
+                        setPayOpen(false)
+                        router.push(`/s/order/${reference}?success=true`)
+                    }}
+                />
+            )}
         </div>
     )
 }

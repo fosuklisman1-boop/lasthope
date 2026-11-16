@@ -35,6 +35,7 @@ import { usePageAccess } from '@/hooks/use-page-access'
 import { useTutorial } from '@/hooks/useTutorial'
 import { HelpButton } from '@/components/tutorial/HelpButton'
 import { isResellerRole } from '@/lib/roles'
+import { MomoPayDialog } from '@/components/pay/momo-pay-dialog'
 
 const QUICK_AMOUNTS = [50, 100, 200, 500]
 const MIN_AMOUNT = 5
@@ -50,6 +51,7 @@ function WalletContent() {
     const [isLoading, setIsLoading] = useState(true)
     const [topUpAmount, setTopUpAmount] = useState('')
     const [isProcessing, setIsProcessing] = useState(false)
+    const [payOpen, setPayOpen] = useState(false)
     const [paystackFeePercent, setPaystackFeePercent] = useState(1.95)
     const searchParams = useSearchParams()
 
@@ -165,7 +167,7 @@ function WalletContent() {
         setTopUpAmount(amount.toString())
     }
 
-    const handleTopUp = async () => {
+    const handleTopUp = () => {
         const amount = parseFloat(topUpAmount)
 
         if (isNaN(amount) || amount < MIN_AMOUNT) {
@@ -178,29 +180,8 @@ function WalletContent() {
             return
         }
 
-        setIsProcessing(true)
-
-        try {
-            // Initialize payment on server
-            const response = await fetch('/api/payments/initialize', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ amount }),
-            })
-
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to initialize payment')
-            }
-
-            // Redirect to Paystack checkout
-            window.location.href = data.authorization_url
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to process payment')
-            setIsProcessing(false)
-        }
+        // Direct mobile-money charge: the dialog collects network/phone and drives the charge.
+        setPayOpen(true)
     }
 
     const fee = topUpAmount ? calculatePaystackFee(parseFloat(topUpAmount) || 0, paystackFeePercent) : 0
@@ -572,6 +553,20 @@ function WalletContent() {
                     )}
                 </CardContent>
             </Card>
+
+            <MomoPayDialog
+                open={payOpen}
+                onOpenChange={setPayOpen}
+                purpose="topup"
+                payload={{ amount: parseFloat(topUpAmount) || 0 }}
+                summary={{ label: 'Wallet top-up', total: totalAmount }}
+                onSuccess={() => {
+                    setPayOpen(false)
+                    setTopUpAmount('')
+                    toast.success('Wallet topped up successfully!')
+                    fetchWalletData()
+                }}
+            />
         </div>
     )
 }
